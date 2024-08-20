@@ -11,7 +11,10 @@ const ChatbotToggle = () => {
 
   // Handle clicks outside the chat window to close it
   const handleClickOutside = (event) => {
-    if (chatWindowRef.current && !chatWindowRef.current.contains(event.target)) {
+    if (
+      chatWindowRef.current &&
+      !chatWindowRef.current.contains(event.target)
+    ) {
       setIsOpen(false);
     }
   };
@@ -42,7 +45,11 @@ const ChatbotToggle = () => {
         </div>
       )}
       {/* Chat window */}
-      {isOpen && <div ref={chatWindowRef}><ChatWindow /></div>}
+      {isOpen && (
+        <div ref={chatWindowRef}>
+          <ChatWindow />
+        </div>
+      )}
     </>
   );
 };

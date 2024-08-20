@@ -106,7 +106,7 @@ io.on('connection', (socket) => {
 });
 
 // Start the server
-const port = 5002;
-server.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+const port = process.env.PORT || 5002; // Use Render-assigned port or default to 5002
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
 });
