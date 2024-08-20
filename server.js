@@ -9,9 +9,9 @@ const app = express();
 const server = http.createServer(app);
 
 // CORS configuration for Express
-app.use(
+aapp.use(
   cors({
-    origin: 'http://localhost:3000', // Your frontend's origin
+    origin: 'https://frontendchatbot.onrender.com', // Update this to your deployed frontend URL
     methods: ['GET', 'POST', 'HEAD', 'PUT', 'PATCH', 'DELETE'],
     credentials: true, // Allow credentials (cookies, auth headers, etc.)
     allowedHeaders: ['Content-Type', 'Authorization'], // Allow specific headers
@@ -21,7 +21,7 @@ app.use(
 // Set up Socket.IO with CORS
 const io = socketIo(server, {
   cors: {
-    origin: 'http://localhost:3000', // Your frontend's origin
+    origin: 'https://frontendchatbot.onrender.com', // Update this to your deployed frontend URL
     methods: ['GET', 'POST'],
     credentials: true, // Allow credentials (cookies, auth headers, etc.)
     allowedHeaders: ['Content-Type', 'Authorization'], // Allow specific headers
