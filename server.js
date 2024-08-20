@@ -9,7 +9,7 @@ const app = express();
 const server = http.createServer(app);
 
 // CORS configuration for Express
-aapp.use(
+app.use(
   cors({
     origin: 'https://frontendchatbot.onrender.com', // Update this to your deployed frontend URL
     methods: ['GET', 'POST', 'HEAD', 'PUT', 'PATCH', 'DELETE'],
