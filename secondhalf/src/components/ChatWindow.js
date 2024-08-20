@@ -3,7 +3,8 @@ import './ChatWindow.css';
 import io from 'socket.io-client';
 
 // Move socket initialization outside the component to prevent reconnections
-const socket = io('http://localhost:5002', {
+const socket = io('https://chatbot008backend.onrender.com', {
+  // Updated to deployed backend URL
   withCredentials: true, // Ensure credentials are sent with requests
   transports: ['websocket', 'polling'], // Enable fallback to polling if WebSocket isn't available
 });
@@ -14,9 +15,9 @@ const ChatWindow = forwardRef((props, ref) => {
 
   // Map usernames to userId keys (this should match your backend)
   const userIdMap = {
-    'Titan': 'user1',
-    'Dcathelon': 'user2',
-    'DRL': 'user3',
+    Titan: 'user1',
+    Dcathelon: 'user2',
+    DRL: 'user3',
   };
 
   // Get logged-in user from localStorage (simulate with localStorage)
@@ -50,17 +51,20 @@ const ChatWindow = forwardRef((props, ref) => {
       setInput('');
 
       try {
-        // Send the message to your backend along with the mapped userId
-        const response = await fetch('http://localhost:5002/send-to-teams', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            message: input,
-            userId: loggedInUserId, // Send mapped userId
-          }),
-        });
+        // Update the API call to use the deployed backend URL
+        const response = await fetch(
+          'https://chatbot008backend.onrender.com/send-to-teams',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              message: input,
+              userId: loggedInUserId, // Send mapped userId
+            }),
+          }
+        );
 
         if (!response.ok) {
           throw new Error('Failed to send message to Teams');
@@ -118,4 +122,3 @@ const ChatWindow = forwardRef((props, ref) => {
 ChatWindow.displayName = 'ChatWindow';
 
 export default ChatWindow;
-
