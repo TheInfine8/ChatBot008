@@ -87,22 +87,29 @@ app.post('/send-to-teams', async (req, res) => {
 app.post('/receive-from-teams', (req, res) => {
   console.log('Payload received from Teams:', req.body);
 
+  // Destructure the message content and the sender information from Teams
   const { content, fromUser } = req.body;
-  const text = content;
-  const user = fromUser;
+  const text = content; // The actual message text sent by Teams
+  const user = fromUser; // The user who sent the message in Teams
 
-  // Map Teams user to chatbot user
+  // Map Teams user (email) to chatbot userId
   const chatbotUserId = mapTeamsUserToChatbotUser(user);
 
+  // Check if both text and chatbotUserId exist
   if (text && chatbotUserId) {
-    // Emit the message to the correct chatbot user room
+    // Emit the actual message to the correct chatbot user room
     io.to(chatbotUserId).emit('chat message', { user: false, text });
     console.log(
       `Message from Teams: ${text} forwarded to chatbot user: ${chatbotUserId}`
     );
+  } else {
+    console.log('Chatbot user ID or message text is missing.');
   }
 
-  res.status(200).json({ text: 'Message received by the website' });
+  // Respond back to Microsoft Teams that the message has been received
+  res
+    .status(200)
+    .json({ message: `Message received by chatbot user: ${chatbotUserId}` });
 });
 
 // Socket.IO event handling
