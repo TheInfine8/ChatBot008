@@ -33,7 +33,8 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Microsoft Teams Incoming Webhook URL (for Outgoing Webhook from Teams)
-const TEAMS_WEBHOOK_URL = 'https://your-teams-webhook-url';
+const TEAMS_WEBHOOK_URL =
+  'https://filoffeesoftwarepvtltd.webhook.office.com/webhookb2/dce0c08f-a7b6-429f-9473-4ebfbb453002@0644003f-0b3f-4517-814d-768fa69ab4ae/IncomingWebhook/023b8776e0884ae9821430ccad34e0a8/108d16ad-07a3-4dcf-88a2-88f4fcf28183';
 
 // Mock user data to simulate different users
 const users = {
