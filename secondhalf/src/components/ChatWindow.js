@@ -52,16 +52,19 @@ const ChatWindow = forwardRef((props, ref) => {
       setInput('');
 
       try {
-        const response = await fetch('https://chatbot008backend.onrender.com/send-to-teams', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            message: input,
-            userId: loggedInUserId, // Send the userId with the message
-          }),
-        });
+        const response = await fetch(
+          'https://chatbot008backend.onrender.com/send-to-teams',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              message: input,
+              userId: loggedInUserId, // Send the userId with the message
+            }),
+          }
+        );
 
         if (!response.ok) {
           throw new Error(`Failed to send message: ${response.statusText}`);
@@ -112,5 +115,3 @@ const ChatWindow = forwardRef((props, ref) => {
 ChatWindow.displayName = 'ChatWindow';
 
 export default ChatWindow;
-
-

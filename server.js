@@ -21,11 +21,12 @@ app.use(
 // Set up Socket.IO with CORS
 const io = socketIo(server, {
   cors: {
-    origin: 'https://frontendchatbot.onrender.com', // Update this to your deployed frontend URL
+    origin: 'https://frontendchatbot.onrender.com', // Your frontend's URL
     methods: ['GET', 'POST'],
     credentials: true, // Allow credentials (cookies, auth headers, etc.)
     allowedHeaders: ['Content-Type', 'Authorization'], // Allow specific headers
   },
+  transports: ['websocket', 'polling'], // Ensure both WebSocket and polling are allowed
 });
 
 // Body-parser middleware
