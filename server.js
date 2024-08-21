@@ -85,31 +85,42 @@ app.post('/send-to-teams', async (req, res) => {
 
 // Route to receive messages from Microsoft Teams (Outgoing Webhook)
 app.post('/receive-from-teams', (req, res) => {
-  console.log('Payload received from Teams:', req.body);
+  try {
+    console.log('Raw Payload received from Teams:', req.body); // Log the full raw payload
 
-  // Destructure the message content and the sender information from Teams
-  const { content, fromUser } = req.body;
-  const text = content; // The actual message text sent by Teams
-  const user = fromUser; // The user who sent the message in Teams
+    const { content, fromUser } = req.body; // Extract message and user details
+    const text = content;
+    const user = fromUser;
 
-  // Map Teams user (email) to chatbot userId
-  const chatbotUserId = mapTeamsUserToChatbotUser(user);
+    // Log the extracted values to see if they are undefined
+    console.log('Extracted message content:', text);
+    console.log('Extracted fromUser:', user);
 
-  // Check if both text and chatbotUserId exist
-  if (text && chatbotUserId) {
-    // Emit the actual message to the correct chatbot user room
-    io.to(chatbotUserId).emit('chat message', { user: false, text });
+    if (!text || !user) {
+      throw new Error('Invalid payload: Missing content or fromUser.');
+    }
+
+    // Map Teams user to chatbot user
+    const chatbotUserId = mapTeamsUserToChatbotUser(user);
     console.log(
-      `Message from Teams: ${text} forwarded to chatbot user: ${chatbotUserId}`
+      `Mapped user from Teams: ${user.email} to chatbot userId: ${chatbotUserId}`
     );
-  } else {
-    console.log('Chatbot user ID or message text is missing.');
-  }
 
-  // Respond back to Microsoft Teams that the message has been received
-  res
-    .status(200)
-    .json({ message: `Message received by chatbot user: ${chatbotUserId}` });
+    if (text && chatbotUserId) {
+      // Emit the message to the correct room
+      io.to(chatbotUserId).emit('chat message', { user: false, text });
+      console.log(`Emitted message to room ${chatbotUserId}: ${text}`);
+    } else {
+      console.log('No chatbot userId or text found. Message not emitted.');
+    }
+
+    res.status(200).json({ text: 'Message received by the website' });
+  } catch (error) {
+    console.error('Error processing the request:', error.message);
+    res
+      .status(500)
+      .json({ error: 'Internal Server Error', details: error.message });
+  }
 });
 
 // Socket.IO event handling
