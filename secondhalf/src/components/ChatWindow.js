@@ -59,7 +59,7 @@ const ChatWindow = forwardRef((props, ref) => {
           },
           body: JSON.stringify({
             message: input,
-            userId: loggedInUserId,
+            userId: loggedInUserId, // Send the userId with the message
           }),
         });
 
@@ -73,14 +73,6 @@ const ChatWindow = forwardRef((props, ref) => {
         console.error('Error sending message:', error.message);
         alert(`Message could not be sent: ${error.message}`);
       }
-
-      // Optionally simulate a response from the chatbot
-      setTimeout(() => {
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { user: false, text: 'This is a response from the chatbot.' },
-        ]);
-      }, 1000);
     }
   };
 
@@ -120,4 +112,5 @@ const ChatWindow = forwardRef((props, ref) => {
 ChatWindow.displayName = 'ChatWindow';
 
 export default ChatWindow;
+
 

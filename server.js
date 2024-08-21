@@ -94,6 +94,7 @@ app.post('/receive-from-teams', (req, res) => {
   const chatbotUserId = mapTeamsUserToChatbotUser(user);
 
   if (text && chatbotUserId) {
+    // Emit the message to the correct chatbot user room
     io.to(chatbotUserId).emit('chat message', { user: false, text });
     console.log(
       `Message from Teams: ${text} forwarded to chatbot user: ${chatbotUserId}`
