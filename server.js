@@ -59,6 +59,18 @@ app.get('/test-connection', (req, res) => {
   res.status(200).send('Backend is reachable');
 });
 
+// Route to test Socket.IO connection by emitting a message to a user
+app.get('/test-socket', (req, res) => {
+  const testMessage = 'Test message from backend';
+  const testUserId = 'user1'; // You can change to 'user2' or 'user3' to test for other users
+
+  // Emit the test message to the specific user room
+  io.to(testUserId).emit('chat message', { user: false, text: testMessage });
+
+  console.log(`Test message emitted to room ${testUserId}: ${testMessage}`);
+  res.status(200).send(`Test message sent to ${testUserId}`);
+});
+
 // Route to send messages from the website's chatbot to Microsoft Teams
 app.post('/send-to-teams', async (req, res) => {
   const { message, userId } = req.body;
@@ -147,3 +159,4 @@ const port = process.env.PORT || 5002; // Use Render-assigned port or default to
 server.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
+
