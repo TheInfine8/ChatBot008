@@ -27,8 +27,8 @@ const io = socketIo(server, {
     allowedHeaders: ['Content-Type', 'Authorization'],
   },
   transports: ['websocket', 'polling'], // Ensure both WebSocket and polling are allowed
-  pingTimeout: 60000, // Increase ping timeout to 60 seconds
-  pingInterval: 25000, // Increase ping interval to 25 seconds
+  pingTimeout: 90000, // Increase ping timeout to 60 seconds
+  pingInterval: 30000, // Increase ping interval to 25 seconds
 });
 
 // Body-parser middleware
