@@ -21,12 +21,12 @@ app.use(
 // Set up Socket.IO with CORS
 const io = socketIo(server, {
   cors: {
-    origin: 'https://frontendchatbot.onrender.com',
+    origin: 'https://frontendchatbot.onrender.com', // Your frontend's URL
     methods: ['GET', 'POST'],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization'],
   },
-  transports: ['websocket', 'polling'],
+  transports: ['websocket', 'polling'], // Ensure both WebSocket and polling are allowed
   pingTimeout: 60000, // Increase ping timeout to 60 seconds
   pingInterval: 25000, // Increase ping interval to 25 seconds
 });
@@ -45,6 +45,9 @@ const users = {
   user2: { id: 2, email: 'DCathelon@example.com', name: 'DCathelon' },
   user3: { id: 3, email: 'DRL@example.com', name: 'DRL' },
 };
+
+// Object to store mapping of thread IDs to chatbot user IDs
+const threadToUserMap = {};
 
 // Helper function to map Teams users to chatbot users
 const mapTeamsUserToChatbotUser = (teamsUser) => {
@@ -94,6 +97,10 @@ app.post('/send-to-teams', async (req, res) => {
     const response = await axios.post(TEAMS_WEBHOOK_URL, {
       text: `Message from ${user.name} (${user.email}): ${message}`,
     });
+
+    // Extract the thread ID or conversation ID from the response (assuming Teams provides it)
+    const threadId = response.data.conversationId || response.data.id; // Adjust based on actual Teams response
+    threadToUserMap[threadId] = userId; // Store the mapping of thread ID to the chatbot user
 
     res.status(200).json({ success: true });
   } catch (error) {
