@@ -98,11 +98,11 @@ app.post('/send-to-teams', async (req, res) => {
       text: `Message from ${user.name} (${user.email}): ${message}`,
     });
 
-    // Log the response from Teams
-    console.log('Response from Teams:', response.data);
+    // Manually assign the conversationId to the user for this test
+    const conversationId = '19:a705dff9e44740a787d8e1813a38a2dd@thread.tacv2'; // Replace with actual value if available dynamically
+    threadToUserMap[conversationId] = userId; // Store the mapping of conversation ID to the chatbot user
 
-    // Here you can manually map the threadId/conversationId based on your logic
-    // threadToUserMap['<some-thread-id>'] = userId;
+    console.log(`Mapped conversationId ${conversationId} to userId ${userId}`);
 
     res.status(200).json({ success: true });
   } catch (error) {
