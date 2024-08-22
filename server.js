@@ -98,16 +98,11 @@ app.post('/send-to-teams', async (req, res) => {
       text: `Message from ${user.name} (${user.email}): ${message}`,
     });
 
-    // Log the full response from Teams to see if it contains a conversation or thread ID
+    // Log the response from Teams
     console.log('Response from Teams:', response.data);
 
-    // Extract the thread ID or conversation ID from the response (adjust based on actual Teams response)
-    const threadId =
-      response.data.conversationId || response.data.id || 'defaultThreadId'; // Replace with the correct property if needed
-    console.log(`Captured thread ID from Teams response: ${threadId}`);
-
-    // Store the mapping of thread ID to the chatbot user
-    threadToUserMap[threadId] = userId;
+    // Here you can manually map the threadId/conversationId based on your logic
+    // threadToUserMap['<some-thread-id>'] = userId;
 
     res.status(200).json({ success: true });
   } catch (error) {
@@ -124,18 +119,32 @@ app.post('/receive-from-teams', (req, res) => {
       JSON.stringify(req.body, null, 2)
     );
 
-    // Extract the thread ID and message content from Teams payload
-    const threadId = req.body.conversation.id;
+    // Extract the conversation ID and message content from the Teams payload
+    const conversationId = req.body.conversation.id.split(';')[0]; // Extract conversation ID before any message ID
     const htmlContent =
       req.body.text ||
       (req.body.attachments && req.body.attachments[0]?.content);
     const textContent = htmlContent.replace(/<\/?[^>]+(>|$)/g, ''); // Strip HTML tags
 
-    // Check if the thread ID exists in the threadToUserMap
-    const chatbotUserId = threadToUserMap[threadId];
+    // Teams may not send fromUser, so use a default user or try to extract name from 'from'
+    const user = req.body.from
+      ? { email: `${req.body.from.name}@example.com` }
+      : { email: 'unknown' };
 
-    if (chatbotUserId && textContent) {
-      // Emit the message to the correct user
+    console.log('Extracted message content:', textContent);
+    console.log('Extracted fromUser:', user);
+
+    if (!textContent || !user.email) {
+      throw new Error('Invalid payload: Missing content or user email.');
+    }
+
+    // Map Teams conversationId to chatbot user
+    const chatbotUserId = threadToUserMap[conversationId];
+    console.log(
+      `Mapped conversationId ${conversationId} to chatbot userId: ${chatbotUserId}`
+    );
+
+    if (textContent && chatbotUserId) {
       io.to(chatbotUserId).emit('chat message', {
         user: false,
         text: textContent,
