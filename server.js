@@ -54,6 +54,11 @@ const mapTeamsUserToChatbotUser = (teamsUser) => {
   return userMap[teamsUser.email] || null;
 };
 
+// Route to test backend connection
+app.get('/test-connection', (req, res) => {
+  res.status(200).send('Backend is reachable');
+});
+
 // Route to send messages from the website's chatbot to Microsoft Teams
 app.post('/send-to-teams', async (req, res) => {
   const { message, userId } = req.body;

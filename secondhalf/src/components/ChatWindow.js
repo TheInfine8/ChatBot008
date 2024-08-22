@@ -2,10 +2,10 @@ import React, { forwardRef, useState, useEffect } from 'react';
 import './ChatWindow.css';
 import io from 'socket.io-client';
 
-// Move socket initialization outside the component to prevent reconnections
+// Ensure the backend URL is correct
 const socket = io('https://chatbot008backend.onrender.com', {
   withCredentials: true,
-  transports: ['websocket', 'polling'],
+  transports: ['websocket', 'polling'], // Ensure WebSocket and polling are enabled
 });
 
 const ChatWindow = forwardRef((props, ref) => {
@@ -29,12 +29,14 @@ const ChatWindow = forwardRef((props, ref) => {
       return;
     }
 
+    console.log(`Joining room with userId: ${loggedInUserId}`); // Log room join for debugging
+
     // Join the user's room when the component mounts
     socket.emit('join', loggedInUserId);
 
     // Listen for incoming messages from the server (from Teams)
     socket.on('chat message', (message) => {
-      console.log('Message from Teams:', message);
+      console.log('Message from Teams received:', message); // Log incoming messages
       setMessages((prevMessages) => [...prevMessages, message]);
     });
 
