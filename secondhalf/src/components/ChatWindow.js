@@ -11,8 +11,8 @@ const socket = io('https://chatbot008backend.onrender.com', {
 });
 
 const ChatWindow = forwardRef((props, ref) => {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState([]); // Messages state to store the conversation
+  const [input, setInput] = useState(''); // Input field for sending messages
 
   // Mapping of user roles to user IDs
   const userIdMap = {
@@ -27,38 +27,32 @@ const ChatWindow = forwardRef((props, ref) => {
 
   useEffect(() => {
     if (!loggedInUserId) {
-      console.error('Invalid user! Please log in again.');
       alert('Invalid user! Please log in again.');
       return;
     }
 
     console.log(`Attempting to join room with userId: ${loggedInUserId}`);
 
-    // Attempt to join the user's room
+    // Join the user's room when the component mounts
     socket.emit('join', loggedInUserId, (ack) => {
-      if (ack) {
-        console.log('Join event acknowledgment:', ack);
-      } else {
-        console.warn('Join event did not return an acknowledgment.');
-      }
+      console.log('Join event acknowledgment:', ack);
     });
 
     // Listen for incoming messages from the server (from Teams)
     socket.on('chat message', (message) => {
-      console.log('Message from Teams received:', message);
+      console.log('Message from Teams received:', message); // Add detailed logging
       setMessages((prevMessages) => [...prevMessages, message]);
     });
 
-    // Listen for connection status
+    // Handle connection events
     socket.on('connect', () => {
-      console.log('WebSocket connected successfully');
+      console.log('WebSocket connected');
     });
 
     socket.on('disconnect', (reason) => {
-      console.warn('WebSocket disconnected:', reason);
+      console.log('WebSocket disconnected:', reason);
     });
 
-    // Handle any errors in the connection
     socket.on('connect_error', (err) => {
       console.error('WebSocket connection error:', err);
     });
@@ -67,7 +61,7 @@ const ChatWindow = forwardRef((props, ref) => {
       console.error('WebSocket reconnection error:', err);
     });
 
-    // Cleanup on component unmount
+    // Cleanup when the component is unmounted
     return () => {
       socket.off('chat message');
       socket.disconnect();
@@ -78,7 +72,7 @@ const ChatWindow = forwardRef((props, ref) => {
   const handleSend = async () => {
     if (input.trim() && loggedInUserId) {
       const newMessage = { user: true, text: input };
-      setMessages((prevMessages) => [...prevMessages, newMessage]);
+      setMessages([...messages, newMessage]);
       setInput('');
 
       try {
@@ -116,6 +110,7 @@ const ChatWindow = forwardRef((props, ref) => {
 
   return (
     <div className="chat-window" ref={ref}>
+      {/* Message display */}
       <div className="messages-wrapper">
         {messages.map((msg, index) => (
           <div
@@ -126,6 +121,8 @@ const ChatWindow = forwardRef((props, ref) => {
           </div>
         ))}
       </div>
+
+      {/* Input field for sending messages */}
       <div className="input-wrapper">
         <input
           type="text"
