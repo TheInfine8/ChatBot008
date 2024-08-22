@@ -39,7 +39,7 @@ const ChatWindow = forwardRef((props, ref) => {
 
     // Listen for incoming messages from the server (from Teams)
     socket.on('chat message', (message) => {
-      console.log('Message from Teams received:', message);
+      console.log('Message from Teams received:', message); // Add detailed logging
       setMessages((prevMessages) => [...prevMessages, message]);
     });
 
@@ -50,6 +50,15 @@ const ChatWindow = forwardRef((props, ref) => {
 
     socket.on('disconnect', (reason) => {
       console.log('WebSocket disconnected:', reason);
+    });
+
+    // Handle any errors in the connection
+    socket.on('connect_error', (err) => {
+      console.error('WebSocket connection error:', err);
+    });
+
+    socket.on('reconnect_error', (err) => {
+      console.error('WebSocket reconnection error:', err);
     });
 
     // Cleanup when the component is unmounted
