@@ -24,32 +24,38 @@ const ChatWindow = forwardRef((props, ref) => {
   // Retrieve the logged-in user from localStorage
   const loggedInUser = localStorage.getItem('loggedInUser');
   const loggedInUserId = userIdMap[loggedInUser]; // Map the username to the correct userId
+
   useEffect(() => {
     if (!loggedInUserId) {
+      console.error('Invalid user! Please log in again.');
       alert('Invalid user! Please log in again.');
       return;
     }
 
     console.log(`Attempting to join room with userId: ${loggedInUserId}`);
 
-    // Join the user's room when the component mounts
+    // Attempt to join the user's room
     socket.emit('join', loggedInUserId, (ack) => {
-      console.log('Join event acknowledgment:', ack);
+      if (ack) {
+        console.log('Join event acknowledgment:', ack);
+      } else {
+        console.warn('Join event did not return an acknowledgment.');
+      }
     });
 
     // Listen for incoming messages from the server (from Teams)
     socket.on('chat message', (message) => {
-      console.log('Message from Teams received:', message); // Add detailed logging
+      console.log('Message from Teams received:', message);
       setMessages((prevMessages) => [...prevMessages, message]);
     });
 
     // Listen for connection status
     socket.on('connect', () => {
-      console.log('WebSocket connected');
+      console.log('WebSocket connected successfully');
     });
 
     socket.on('disconnect', (reason) => {
-      console.log('WebSocket disconnected:', reason);
+      console.warn('WebSocket disconnected:', reason);
     });
 
     // Handle any errors in the connection
@@ -61,7 +67,7 @@ const ChatWindow = forwardRef((props, ref) => {
       console.error('WebSocket reconnection error:', err);
     });
 
-    // Cleanup when the component is unmounted
+    // Cleanup on component unmount
     return () => {
       socket.off('chat message');
       socket.disconnect();
@@ -72,7 +78,7 @@ const ChatWindow = forwardRef((props, ref) => {
   const handleSend = async () => {
     if (input.trim() && loggedInUserId) {
       const newMessage = { user: true, text: input };
-      setMessages([...messages, newMessage]);
+      setMessages((prevMessages) => [...prevMessages, newMessage]);
       setInput('');
 
       try {
