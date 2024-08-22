@@ -98,9 +98,16 @@ app.post('/send-to-teams', async (req, res) => {
       text: `Message from ${user.name} (${user.email}): ${message}`,
     });
 
-    // Extract the thread ID or conversation ID from the response (assuming Teams provides it)
-    const threadId = response.data.conversationId || response.data.id; // Adjust based on actual Teams response
-    threadToUserMap[threadId] = userId; // Store the mapping of thread ID to the chatbot user
+    // Log the full response from Teams to see if it contains a conversation or thread ID
+    console.log('Response from Teams:', response.data);
+
+    // Extract the thread ID or conversation ID from the response (adjust based on actual Teams response)
+    const threadId =
+      response.data.conversationId || response.data.id || 'defaultThreadId'; // Replace with the correct property if needed
+    console.log(`Captured thread ID from Teams response: ${threadId}`);
+
+    // Store the mapping of thread ID to the chatbot user
+    threadToUserMap[threadId] = userId;
 
     res.status(200).json({ success: true });
   } catch (error) {
@@ -112,31 +119,42 @@ app.post('/send-to-teams', async (req, res) => {
 // Route to receive messages from Microsoft Teams (Outgoing Webhook)
 app.post('/receive-from-teams', (req, res) => {
   try {
-    console.log('Raw Payload received from Teams:', JSON.stringify(req.body, null, 2));
+    console.log(
+      'Raw Payload received from Teams:',
+      JSON.stringify(req.body, null, 2)
+    );
 
     // Extract the thread ID and message content from Teams payload
     const threadId = req.body.conversation.id;
-    const htmlContent = req.body.text || (req.body.attachments && req.body.attachments[0]?.content);
-    const textContent = htmlContent.replace(/<\/?[^>]+(>|$)/g, ""); // Strip HTML tags
+    const htmlContent =
+      req.body.text ||
+      (req.body.attachments && req.body.attachments[0]?.content);
+    const textContent = htmlContent.replace(/<\/?[^>]+(>|$)/g, ''); // Strip HTML tags
 
     // Check if the thread ID exists in the threadToUserMap
     const chatbotUserId = threadToUserMap[threadId];
 
     if (chatbotUserId && textContent) {
       // Emit the message to the correct user
-      io.to(chatbotUserId).emit('chat message', { user: false, text: textContent });
+      io.to(chatbotUserId).emit('chat message', {
+        user: false,
+        text: textContent,
+      });
       console.log(`Emitted message to room ${chatbotUserId}: ${textContent}`);
     } else {
-      console.log('No matching user found for this thread. Message not emitted.');
+      console.log(
+        'No matching user found for this thread. Message not emitted.'
+      );
     }
 
     res.status(200).json({ text: 'Message received by the website' });
   } catch (error) {
     console.error('Error processing the request:', error.message);
-    res.status(500).json({ error: 'Internal Server Error', details: error.message });
+    res
+      .status(500)
+      .json({ error: 'Internal Server Error', details: error.message });
   }
 });
-
 
 // Socket.IO event handling
 io.on('connection', (socket) => {
