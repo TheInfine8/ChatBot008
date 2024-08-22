@@ -6,8 +6,8 @@ import io from 'socket.io-client';
 const socket = io('https://chatbot008backend.onrender.com', {
   withCredentials: true,
   transports: ['websocket', 'polling'],
-  reconnectionAttempts: 5,  // Limit reconnection attempts
-  reconnectionDelay: 2000,  // Delay between reconnection attempts
+  reconnectionAttempts: 5, // Limit reconnection attempts
+  reconnectionDelay: 2000, // Delay between reconnection attempts
 });
 
 const ChatWindow = forwardRef((props, ref) => {
@@ -24,35 +24,35 @@ const ChatWindow = forwardRef((props, ref) => {
   // Retrieve the logged-in user from localStorage
   const loggedInUser = localStorage.getItem('loggedInUser');
   const loggedInUserId = userIdMap[loggedInUser]; // Map the username to the correct userId
-
   useEffect(() => {
     if (!loggedInUserId) {
       alert('Invalid user! Please log in again.');
       return;
     }
 
-    console.log(`Joining room with userId: ${loggedInUserId}`);
+    console.log(`Attempting to join room with userId: ${loggedInUserId}`);
 
-    // Join the user room when component mounts
-    socket.emit('join', loggedInUserId);
+    // Join the user's room when the component mounts
+    socket.emit('join', loggedInUserId, (ack) => {
+      console.log('Join event acknowledgment:', ack);
+    });
 
-    // Listen for messages from the server
+    // Listen for incoming messages from the server (from Teams)
     socket.on('chat message', (message) => {
-      console.log('Message from server:', message); // Log received message
+      console.log('Message from Teams received:', message);
       setMessages((prevMessages) => [...prevMessages, message]);
     });
 
-    // Log any disconnection event
-    socket.on('disconnect', () => {
-      console.log('Socket disconnected');
+    // Listen for connection status
+    socket.on('connect', () => {
+      console.log('WebSocket connected');
     });
 
-    // Log connection error events
-    socket.on('connect_error', (error) => {
-      console.error('Connection error:', error);
+    socket.on('disconnect', (reason) => {
+      console.log('WebSocket disconnected:', reason);
     });
 
-    // Cleanup on component unmount
+    // Cleanup when the component is unmounted
     return () => {
       socket.off('chat message');
       socket.disconnect();
@@ -127,4 +127,3 @@ const ChatWindow = forwardRef((props, ref) => {
 
 ChatWindow.displayName = 'ChatWindow';
 export default ChatWindow;
-
