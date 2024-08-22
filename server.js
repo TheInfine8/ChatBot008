@@ -112,53 +112,31 @@ app.post('/send-to-teams', async (req, res) => {
 // Route to receive messages from Microsoft Teams (Outgoing Webhook)
 app.post('/receive-from-teams', (req, res) => {
   try {
-    console.log(
-      'Raw Payload received from Teams:',
-      JSON.stringify(req.body, null, 2)
-    );
+    console.log('Raw Payload received from Teams:', JSON.stringify(req.body, null, 2));
 
-    // Extract the message content (text) and strip out HTML tags
-    const htmlContent =
-      req.body.text ||
-      (req.body.attachments && req.body.attachments[0]?.content);
-    const textContent = htmlContent.replace(/<\/?[^>]+(>|$)/g, ''); // Remove HTML tags
+    // Extract the thread ID and message content from Teams payload
+    const threadId = req.body.conversation.id;
+    const htmlContent = req.body.text || (req.body.attachments && req.body.attachments[0]?.content);
+    const textContent = htmlContent.replace(/<\/?[^>]+(>|$)/g, ""); // Strip HTML tags
 
-    // Teams may not send fromUser, so use a default user or try to extract name from 'from'
-    const user = req.body.from
-      ? { email: `${req.body.from.name}@example.com` }
-      : { email: 'unknown' };
+    // Check if the thread ID exists in the threadToUserMap
+    const chatbotUserId = threadToUserMap[threadId];
 
-    console.log('Extracted message content:', textContent);
-    console.log('Extracted fromUser:', user);
-
-    if (!textContent || !user.email) {
-      throw new Error('Invalid payload: Missing content or user email.');
-    }
-
-    // Map Teams user to chatbot user
-    const chatbotUserId = mapTeamsUserToChatbotUser(user);
-    console.log(
-      `Mapped user from Teams: ${user.email} to chatbot userId: ${chatbotUserId}`
-    );
-
-    if (textContent && chatbotUserId) {
-      io.to(chatbotUserId).emit('chat message', {
-        user: false,
-        text: textContent,
-      });
+    if (chatbotUserId && textContent) {
+      // Emit the message to the correct user
+      io.to(chatbotUserId).emit('chat message', { user: false, text: textContent });
       console.log(`Emitted message to room ${chatbotUserId}: ${textContent}`);
     } else {
-      console.log('No chatbot userId or content found. Message not emitted.');
+      console.log('No matching user found for this thread. Message not emitted.');
     }
 
     res.status(200).json({ text: 'Message received by the website' });
   } catch (error) {
     console.error('Error processing the request:', error.message);
-    res
-      .status(500)
-      .json({ error: 'Internal Server Error', details: error.message });
+    res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 });
+
 
 // Socket.IO event handling
 io.on('connection', (socket) => {
