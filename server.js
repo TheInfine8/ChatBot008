@@ -174,8 +174,8 @@ io.on('connection', (socket) => {
     socket.join(userId); // Assign user to a specific room
   });
 
-  socket.on('disconnect', () => {
-    console.log('Client disconnected');
+  socket.on('disconnect', (reason) => {
+    console.log(`Client disconnected: ${reason}`); // Log reason for disconnection
   });
 });
 
