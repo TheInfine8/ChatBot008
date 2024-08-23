@@ -47,7 +47,11 @@ const users = {
 };
 
 // Object to store mapping of thread IDs to chatbot user IDs
-const threadToUserMap = {};
+const threadToUserMap = {
+  '19:a705dff9e44740a787d8e1813a38a2dd@thread.tacv2': 'user1', // Titan's conversation ID
+  '19:bxxxx@thread.tacv2': 'user2', // Dcathelon's conversation ID (replace '19:bxxxx' with actual ID)
+  '19:cxxxx@thread.tacv2': 'user3', // DRL's conversation ID (replace '19:cxxxx' with actual ID)
+};
 
 // Helper function to map Teams conversation ID to chatbot users
 const mapTeamsUserToChatbotUser = (conversationId) => {
