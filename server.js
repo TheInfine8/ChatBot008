@@ -134,20 +134,21 @@ app.post('/receive-from-teams', (req, res) => {
       (req.body.attachments && req.body.attachments[0]?.content);
     const textContent = htmlContent.replace(/<\/?[^>]+(>|$)/g, ''); // Strip HTML tags
 
-    // Teams may not send fromUser, so use a default user or try to extract name from 'from'
-    const user = req.body.from
-      ? { email: `${req.body.from.name}@example.com` }
-      : { email: 'unknown' };
-
+    // Extract the sender's email or name
+    const fromUserEmail = `${req.body.from.name}@example.com`; // Assuming the name maps to the email
     console.log('Extracted message content:', textContent);
-    console.log('Extracted fromUser:', user);
+    console.log('Extracted fromUser:', fromUserEmail);
 
-    if (!textContent || !user.email) {
-      throw new Error('Invalid payload: Missing content or user email.');
+    // Map Teams conversationId to chatbot user by combining conversationId and the email
+    const chatbotUserId = Object.keys(users).find(
+      (userId) =>
+        users[userId].email.toLowerCase() === fromUserEmail.toLowerCase()
+    );
+
+    if (!chatbotUserId) {
+      throw new Error('Invalid payload: Unable to map user.');
     }
 
-    // Map Teams conversationId to chatbot user
-    const chatbotUserId = threadToUserMap[conversationId];
     console.log(
       `Mapped conversationId ${conversationId} to chatbot userId: ${chatbotUserId}`
     );
