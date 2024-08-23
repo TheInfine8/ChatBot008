@@ -98,8 +98,16 @@ app.post('/send-to-teams', async (req, res) => {
       text: `Message from ${user.name} (${user.email}): ${message}`,
     });
 
-    // Manually assign the conversationId to the user for this test
-    const conversationId = '19:a705dff9e44740a787d8e1813a38a2dd@thread.tacv2'; // Replace with actual value if available dynamically
+    // Manually assign the conversationId based on the user (you should replace this with dynamic conversation ID if available)
+    let conversationId;
+    if (userId === 'user1') {
+      conversationId = '19:a705dff9e44740a787d8e1813a38a2dd@thread.tacv2'; // Titan's conversationId
+    } else if (userId === 'user2') {
+      conversationId = '19:bxxxx@thread.tacv2'; // Dcathelon's conversationId (replace this with the actual value)
+    } else if (userId === 'user3') {
+      conversationId = '19:cxxxx@thread.tacv2'; // DRL's conversationId (replace this with the actual value)
+    }
+
     threadToUserMap[conversationId] = userId; // Store the mapping of conversation ID to the chatbot user
 
     console.log(`Mapped conversationId ${conversationId} to userId ${userId}`);
