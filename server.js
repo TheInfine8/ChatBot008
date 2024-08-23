@@ -27,8 +27,8 @@ const io = socketIo(server, {
     allowedHeaders: ['Content-Type', 'Authorization'],
   },
   transports: ['websocket', 'polling'], // Ensure both WebSocket and polling are allowed
-  pingTimeout: 90000, // Increase ping timeout to 90 seconds
-  pingInterval: 30000, // Ping interval set to 30 seconds
+  pingTimeout: 90000, // Increase ping timeout to 60 seconds
+  pingInterval: 30000, // Increase ping interval to 25 seconds
 });
 
 // Body-parser middleware
@@ -49,14 +49,9 @@ const users = {
 // Object to store mapping of thread IDs to chatbot user IDs
 const threadToUserMap = {};
 
-// Helper function to map Teams users to chatbot users
-const mapTeamsUserToChatbotUser = (teamsUser) => {
-  const userMap = {
-    'titan@example.com': 'user1',
-    'dcathelon@example.com': 'user2',
-    'drl@example.com': 'user3',
-  };
-  return userMap[teamsUser.email.toLowerCase()] || null;
+// Helper function to map Teams conversation ID to chatbot users
+const mapTeamsUserToChatbotUser = (conversationId) => {
+  return threadToUserMap[conversationId] || null;
 };
 
 // Route to test backend connection
@@ -98,17 +93,18 @@ app.post('/send-to-teams', async (req, res) => {
       text: `Message from ${user.name} (${user.email}): ${message}`,
     });
 
-    // Manually assign the conversationId based on the user
+    // Manually assign the conversationId based on the user (replace with dynamic ID if needed)
     let conversationId;
     if (userId === 'user1') {
       conversationId = '19:a705dff9e44740a787d8e1813a38a2dd@thread.tacv2'; // Titan's conversationId
     } else if (userId === 'user2') {
-      conversationId = '19:bxxxx@thread.tacv2'; // Dcathelon's conversationId (replace this with actual value)
+      conversationId = '19:bxxxx@thread.tacv2'; // Dcathelon's conversationId
     } else if (userId === 'user3') {
-      conversationId = '19:cxxxx@thread.tacv2'; // DRL's conversationId (replace with actual value)
+      conversationId = '19:cxxxx@thread.tacv2'; // DRL's conversationId
     }
 
-    threadToUserMap[conversationId] = userId; // Store the mapping of conversation ID to the chatbot user
+    // Store the mapping of conversation ID to the chatbot user
+    threadToUserMap[conversationId] = userId;
 
     console.log(`Mapped conversationId ${conversationId} to userId ${userId}`);
 
@@ -134,25 +130,23 @@ app.post('/receive-from-teams', (req, res) => {
       (req.body.attachments && req.body.attachments[0]?.content);
     const textContent = htmlContent.replace(/<\/?[^>]+(>|$)/g, ''); // Strip HTML tags
 
-    // Extract the sender's email or name
-    const fromUserEmail = `${req.body.from.name}@example.com`; // Assuming the name maps to the email
     console.log('Extracted message content:', textContent);
-    console.log('Extracted fromUser:', fromUserEmail);
+    console.log('Conversation ID:', conversationId);
 
-    // Map Teams conversationId to chatbot user by combining conversationId and the email
-    const chatbotUserId = Object.keys(users).find(
-      (userId) =>
-        users[userId].email.toLowerCase() === fromUserEmail.toLowerCase()
-    );
+    // Check if this conversationId is mapped to a specific chatbot user
+    const chatbotUserId = mapTeamsUserToChatbotUser(conversationId);
 
     if (!chatbotUserId) {
-      throw new Error('Invalid payload: Unable to map user.');
+      throw new Error(
+        'Invalid payload: Unable to map conversation to chatbot user.'
+      );
     }
 
     console.log(
       `Mapped conversationId ${conversationId} to chatbot userId: ${chatbotUserId}`
     );
 
+    // Emit the message to the correct chatbot user based on conversation ID
     if (textContent && chatbotUserId) {
       io.to(chatbotUserId).emit('chat message', {
         user: false,
@@ -161,7 +155,7 @@ app.post('/receive-from-teams', (req, res) => {
       console.log(`Emitted message to room ${chatbotUserId}: ${textContent}`);
     } else {
       console.log(
-        'No matching user found for this thread. Message not emitted.'
+        'No matching user found for this conversation. Message not emitted.'
       );
     }
 
