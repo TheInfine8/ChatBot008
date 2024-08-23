@@ -27,8 +27,8 @@ const io = socketIo(server, {
     allowedHeaders: ['Content-Type', 'Authorization'],
   },
   transports: ['websocket', 'polling'], // Ensure both WebSocket and polling are allowed
-  pingTimeout: 90000, // Increase ping timeout to 60 seconds
-  pingInterval: 30000, // Increase ping interval to 25 seconds
+  pingTimeout: 90000, // Increase ping timeout to 90 seconds
+  pingInterval: 30000, // Ping interval set to 30 seconds
 });
 
 // Body-parser middleware
@@ -56,7 +56,7 @@ const mapTeamsUserToChatbotUser = (teamsUser) => {
     'dcathelon@example.com': 'user2',
     'drl@example.com': 'user3',
   };
-  return userMap[teamsUser.email] || null;
+  return userMap[teamsUser.email.toLowerCase()] || null;
 };
 
 // Route to test backend connection
@@ -67,7 +67,7 @@ app.get('/test-connection', (req, res) => {
 // Route to test Socket.IO connection by emitting a message to a user
 app.get('/test-socket', (req, res) => {
   const testMessage = 'Test message from backend';
-  const testUserId = 'user1'; // You can change to 'user2' or 'user3' to test for other users
+  const testUserId = 'user1'; // Change to 'user2' or 'user3' to test for other users
 
   // Emit the test message to the specific user room
   io.to(testUserId).emit('chat message', { user: false, text: testMessage });
@@ -98,14 +98,14 @@ app.post('/send-to-teams', async (req, res) => {
       text: `Message from ${user.name} (${user.email}): ${message}`,
     });
 
-    // Manually assign the conversationId based on the user (you should replace this with dynamic conversation ID if available)
+    // Manually assign the conversationId based on the user
     let conversationId;
     if (userId === 'user1') {
       conversationId = '19:a705dff9e44740a787d8e1813a38a2dd@thread.tacv2'; // Titan's conversationId
     } else if (userId === 'user2') {
-      conversationId = '19:bxxxx@thread.tacv2'; // Dcathelon's conversationId (replace this with the actual value)
+      conversationId = '19:bxxxx@thread.tacv2'; // Dcathelon's conversationId (replace this with actual value)
     } else if (userId === 'user3') {
-      conversationId = '19:cxxxx@thread.tacv2'; // DRL's conversationId (replace this with the actual value)
+      conversationId = '19:cxxxx@thread.tacv2'; // DRL's conversationId (replace with actual value)
     }
 
     threadToUserMap[conversationId] = userId; // Store the mapping of conversation ID to the chatbot user
