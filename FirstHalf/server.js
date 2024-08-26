@@ -140,7 +140,7 @@ app.post('/receive-from-teams', (req, res) => {
     );
 
     // Extract the conversation ID and message content from the Teams payload
-    const conversationId = req.body.conversation.id.split(';')[0]; // Extract conversation ID before any message ID
+    const conversationId = req.body.conversation.id.split(';')[0];
     const htmlContent =
       req.body.text ||
       (req.body.attachments && req.body.attachments[0]?.content);
@@ -148,15 +148,26 @@ app.post('/receive-from-teams', (req, res) => {
 
     console.log('Extracted message content:', textContent);
     console.log('Conversation ID:', conversationId);
-    console.log('Current threadToUserMap:', threadToUserMap); // Log the current map here
+    console.log('Current threadToUserMap:', threadToUserMap);
 
     // Check if this conversationId is mapped to a specific chatbot user
-    const chatbotUserId = threadToUserMap[conversationId];
+    let chatbotUserId = threadToUserMap[conversationId];
+
+    // If no mapping is found, try using other metadata (e.g., sender ID) to find the correct user
+    if (!chatbotUserId) {
+      const senderAadObjectId = req.body.from.aadObjectId;
+      console.log(
+        `Mismatched Conversation ID. Sender AAD Object ID: ${senderAadObjectId}`
+      );
+
+      // Implement custom logic to map senderAadObjectId to a chatbot user
+      if (senderAadObjectId === '108d16ad-07a3-4dcf-88a2-88f4fcf28183') {
+        // Example AAD Object ID for DRL
+        chatbotUserId = 'user3'; // Map to DRL manually based on AAD Object ID
+      }
+    }
 
     if (!chatbotUserId) {
-      console.error(
-        `Mismatched Conversation ID: Expected conversationId for user3 is 19:cxxxx@thread.tacv2, but received ${conversationId}`
-      );
       throw new Error(
         `Invalid payload: Unable to map conversation to chatbot user. Conversation ID: ${conversationId}`
       );
