@@ -9,7 +9,7 @@ const app = express();
 const server = http.createServer(app);
 
 // In-memory conversation ID mapping (You can replace this with a database if needed)
-const conversationMap = {}; // To store { conversationId: userId }
+const conversationMap = {}; // To store { userId: { conversationId } }
 
 // CORS configuration for Express
 app.use(
@@ -43,8 +43,8 @@ const TEAMS_WEBHOOK_URL =
   'https://filoffeesoftwarepvtltd.webhook.office.com/webhookb2/dce0c08f-a7b6-429f-9473-4ebfbb453002@0644003f-0b3f-4517-814d-768fa69ab4ae/IncomingWebhook/023b8776e0884ae9821430ccad34e0a8/108d16ad-07a3-4dcf-88a2-88f4fcf28183';
 
 // Function to dynamically map conversation IDs to user IDs
-const mapConversationIdToUser = (conversationId, userId) => {
-  conversationMap[conversationId] = userId;
+const mapConversationIdToUser = (userId, conversationId) => {
+  conversationMap[userId] = { id: conversationId };
 };
 
 // Route to send messages from the chatbot to Microsoft Teams
@@ -63,11 +63,16 @@ app.post('/send-to-teams', async (req, res) => {
       text: `Message from user ${userId}: ${message}`,
     });
 
-    // Store the conversation ID if it's not already mapped
-    const conversationId = response.data.conversation.id;
-    if (!conversationMap[conversationId]) {
-      mapConversationIdToUser(conversationId, userId);
+    // Assume conversation ID comes back in the response (modify this as needed)
+    const conversationId = response.data.conversation?.id;
+
+    if (!conversationId) {
+      console.error('Conversation ID is missing from response');
+      return res.status(500).json({ error: 'Failed to map conversation ID' });
     }
+
+    // Map the conversation ID to the user
+    mapConversationIdToUser(userId, conversationId);
 
     res.status(200).json({ success: true });
   } catch (error) {
@@ -89,7 +94,9 @@ app.post('/receive-from-teams', (req, res) => {
     const textContent = req.body.text.replace(/<\/?[^>]+(>|$)/g, '').trim();
 
     // Find the user by matching the conversation ID
-    const userId = conversationMap[conversationId];
+    const userId = Object.keys(conversationMap).find(
+      (key) => conversationMap[key].id === conversationId
+    );
 
     if (!userId) {
       throw new Error('Conversation ID not mapped to any user.');
