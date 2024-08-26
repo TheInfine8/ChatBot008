@@ -72,6 +72,7 @@ app.get('/test-socket', (req, res) => {
 });
 
 // Route to send messages from the website's chatbot to Microsoft Teams
+// Route to send messages from the website's chatbot to Microsoft Teams
 app.post('/send-to-teams', async (req, res) => {
   const { message, userId } = req.body;
 
@@ -88,12 +89,7 @@ app.post('/send-to-teams', async (req, res) => {
   try {
     console.log(`Message being sent to Teams from ${user.email}:`, message);
 
-    // Send the message to Microsoft Teams using the incoming webhook
-    const response = await axios.post(TEAMS_WEBHOOK_URL, {
-      text: `Message from ${user.name} (${user.email}): ${message}`,
-    });
-
-    // Use a different conversationId for each user based on the userId
+    // Assign the correct conversation ID based on the userId
     let conversationId;
     if (userId === 'user1') {
       conversationId = '19:a705dff9e44740a787d8e1813a38a2dd@thread.tacv2'; // Titan's conversationId
@@ -103,10 +99,16 @@ app.post('/send-to-teams', async (req, res) => {
       conversationId = '19:cxxxx@thread.tacv2'; // DRL's conversationId
     }
 
+    console.log(`Assigned conversationId ${conversationId} for user ${userId}`);
+
     // Store the mapping of conversation ID to the chatbot user
     threadToUserMap[conversationId] = userId;
-
     console.log(`Mapped conversationId ${conversationId} to userId ${userId}`);
+
+    // Send the message to Microsoft Teams using the incoming webhook
+    await axios.post(TEAMS_WEBHOOK_URL, {
+      text: `Message from ${user.name} (${user.email}): ${message}`,
+    });
 
     res.status(200).json({ success: true });
   } catch (error) {
