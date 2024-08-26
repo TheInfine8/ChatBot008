@@ -93,7 +93,7 @@ app.post('/send-to-teams', async (req, res) => {
       text: `Message from ${user.name} (${user.email}): ${message}`,
     });
 
-    // Manually assign the conversationId based on the user (replace with dynamic ID if needed)
+    // Use a different conversationId for each user based on the userId
     let conversationId;
     if (userId === 'user1') {
       conversationId = '19:a705dff9e44740a787d8e1813a38a2dd@thread.tacv2'; // Titan's conversationId
