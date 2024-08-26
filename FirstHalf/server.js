@@ -71,7 +71,20 @@ app.get('/test-socket', (req, res) => {
   res.status(200).send(`Test message sent to ${testUserId}`);
 });
 
-// Route to send messages from the website's chatbot to Microsoft Teams
+// Route to get the last 40-50 messages for a specific user (Updation 1)
+app.get('/get-messages/:userId', (req, res) => {
+  const { userId } = req.params;
+
+  // Simulate fetching messages from a database or memory
+  const messages = []; // Add logic to fetch stored messages for the user
+
+  if (userId in users) {
+    res.status(200).json({ messages });
+  } else {
+    res.status(404).json({ error: 'User not found' });
+  }
+});
+
 // Route to send messages from the website's chatbot to Microsoft Teams
 app.post('/send-to-teams', async (req, res) => {
   const { message, userId } = req.body;
@@ -117,11 +130,9 @@ app.post('/send-to-teams', async (req, res) => {
   }
 });
 
-// Route to receive messages from Microsoft Teams (Outgoing Webhook)
-// Route to receive messages from Microsoft Teams (Outgoing Webhook)
+// Route to receive messages from Microsoft Teams (Outgoing Webhook) - Updation 2
 app.post('/receive-from-teams', (req, res) => {
   try {
-    // Log the full payload received from Teams
     console.log(
       'Raw Payload received from Teams:',
       JSON.stringify(req.body, null, 2)
