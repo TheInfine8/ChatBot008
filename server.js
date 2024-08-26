@@ -120,7 +120,7 @@ app.post('/send-to-teams', async (req, res) => {
 });
 
 // Route to receive messages from Microsoft Teams (Outgoing Webhook)
-app.post('/receive-from-teams', (req, res) => {
+app.post('/receive-from-teams', async (req, res) => {
   try {
     console.log(
       'Raw Payload received from Teams:',
@@ -128,38 +128,48 @@ app.post('/receive-from-teams', (req, res) => {
     );
 
     // Extract the conversation ID and message content from the Teams payload
-    const conversationId = req.body.conversation.id.split(';')[0]; // Extract conversation ID before any message ID
+    const conversationId = req.body.conversation.id.split(';')[0];
     const htmlContent =
       req.body.text ||
       (req.body.attachments && req.body.attachments[0]?.content);
-    const textContent = htmlContent.replace(/<\/?[^>]+(>|$)/g, ''); // Strip HTML tags
 
-    console.log('Extracted message content:', textContent);
+    // Clean up the message content
+    let textContent = htmlContent.replace(/<\/?[^>]+(>|$)/g, ''); // Remove <at> tags and any other HTML tags
+    textContent = textContent.replace(/&nbsp;/g, ' '); // Replace non-breaking spaces (&nbsp;) with normal spaces
+    textContent = textContent.trim(); // Trim any leading or trailing spaces
+
+    console.log('Cleaned message content:', textContent);
     console.log('Conversation ID:', conversationId);
 
-    // Check if this conversationId is mapped to a specific chatbot user
     const chatbotUserId = mapTeamsUserToChatbotUser(conversationId);
-
     if (!chatbotUserId) {
       throw new Error(
         'Invalid payload: Unable to map conversation to chatbot user.'
       );
     }
 
-    console.log(
-      `Mapped conversationId ${conversationId} to chatbot userId: ${chatbotUserId}`
-    );
-
-    // Emit the message to the correct chatbot user based on conversation ID
+    // Emit the cleaned message to the chatbot user's room
     if (textContent && chatbotUserId) {
       io.to(chatbotUserId).emit('chat message', {
         user: false,
         text: textContent,
       });
-      console.log(`Emitted message to room ${chatbotUserId}: ${textContent}`);
-    } else {
+
+      // Save the message to MongoDB (if chat history is implemented)
+      const chat = await Chat.findOne({ userId: chatbotUserId });
+      if (chat) {
+        chat.messages.push({ user: false, text: textContent });
+        await chat.save();
+      } else {
+        const newChat = new Chat({
+          userId: chatbotUserId,
+          messages: [{ user: false, text: textContent }],
+        });
+        await newChat.save();
+      }
+
       console.log(
-        'No matching user found for this conversation. Message not emitted.'
+        `Emitted cleaned message to room ${chatbotUserId}: ${textContent}`
       );
     }
 
@@ -171,7 +181,6 @@ app.post('/receive-from-teams', (req, res) => {
       .json({ error: 'Internal Server Error', details: error.message });
   }
 });
-
 // Socket.IO event handling
 io.on('connection', (socket) => {
   console.log('New client connected');
@@ -191,4 +200,3 @@ const port = process.env.PORT || 5002; // Use Render-assigned port or default to
 server.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
-
