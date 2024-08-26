@@ -134,16 +134,11 @@ app.post('/send-to-teams', async (req, res) => {
 // Route to receive messages from Microsoft Teams (Outgoing Webhook) - Updation 2
 app.post('/receive-from-teams', (req, res) => {
   try {
-    console.log(
-      'Raw Payload received from Teams:',
-      JSON.stringify(req.body, null, 2)
-    );
+    console.log('Raw Payload received from Teams:', JSON.stringify(req.body, null, 2));
 
     // Extract conversation ID and message content
     const conversationId = req.body.conversation.id.split(';')[0];
-    const htmlContent =
-      req.body.text ||
-      (req.body.attachments && req.body.attachments[0]?.content);
+    const htmlContent = req.body.text || (req.body.attachments && req.body.attachments[0]?.content);
     const textContent = htmlContent.replace(/<\/?[^>]+(>|$)/g, ''); // Strip HTML tags
 
     console.log('Extracted message content:', textContent);
@@ -156,29 +151,23 @@ app.post('/receive-from-teams', (req, res) => {
     // If no mapping is found, use the AAD Object ID to identify the correct user
     if (!chatbotUserId) {
       const senderAadObjectId = req.body.from.aadObjectId;
-      console.log(
-        `Mismatched Conversation ID. Sender AAD Object ID: ${senderAadObjectId}`
-      );
+      console.log(`Mismatched Conversation ID. Sender AAD Object ID: ${senderAadObjectId}`);
 
       // Manual mapping based on AAD Object ID
-      if (senderAadObjectId === '108d16ad-07a3-4dcf-88a2-88f4fcf28183') {
-        chatbotUserId = 'user3'; // DRL's AAD Object ID
+      if (senderAadObjectId === 'aad-object-id-for-user1') {
+        chatbotUserId = 'user1'; // Titan's AAD Object ID
       } else if (senderAadObjectId === 'aad-object-id-for-user2') {
         chatbotUserId = 'user2'; // Dcathelon's AAD Object ID
-      } else if (senderAadObjectId === 'aad-object-id-for-user1') {
-        chatbotUserId = 'user1'; // Titan's AAD Object ID
+      } else if (senderAadObjectId === 'aad-object-id-for-user3') {
+        chatbotUserId = 'user3'; // DRL's AAD Object ID
       }
     }
 
     if (!chatbotUserId) {
-      throw new Error(
-        `Invalid payload: Unable to map conversation to chatbot user. Conversation ID: ${conversationId}`
-      );
+      throw new Error(`Invalid payload: Unable to map conversation to chatbot user. Conversation ID: ${conversationId}`);
     }
 
-    console.log(
-      `Mapped conversationId ${conversationId} to chatbot userId: ${chatbotUserId}`
-    );
+    console.log(`Mapped conversationId ${conversationId} to chatbot userId: ${chatbotUserId}`);
 
     // Emit the message to the correct chatbot user based on conversation ID or AAD Object ID
     if (textContent && chatbotUserId) {
@@ -188,19 +177,16 @@ app.post('/receive-from-teams', (req, res) => {
       });
       console.log(`Emitted message to room ${chatbotUserId}: ${textContent}`);
     } else {
-      console.log(
-        'No matching user found for this conversation. Message not emitted.'
-      );
+      console.log('No matching user found for this conversation. Message not emitted.');
     }
 
     res.status(200).json({ text: 'Message received by the website' });
   } catch (error) {
     console.error('Error processing the request:', error.message);
-    res
-      .status(500)
-      .json({ error: 'Internal Server Error', details: error.message });
+    res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 });
+
 
 // Start the server
 const port = process.env.PORT || 5002; // Use Render-assigned port or default to 5002
