@@ -116,8 +116,10 @@ app.post('/send-to-teams', async (req, res) => {
 });
 
 // Route to receive messages from Microsoft Teams (Outgoing Webhook)
+// Route to receive messages from Microsoft Teams (Outgoing Webhook)
 app.post('/receive-from-teams', (req, res) => {
   try {
+    // Log the full payload received from Teams
     console.log(
       'Raw Payload received from Teams:',
       JSON.stringify(req.body, null, 2)
