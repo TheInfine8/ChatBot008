@@ -117,6 +117,7 @@ app.post('/send-to-teams', async (req, res) => {
     // Store the mapping of conversation ID to the chatbot user
     threadToUserMap[conversationId] = userId;
     console.log(`Mapped conversationId ${conversationId} to userId ${userId}`);
+    console.log('Current threadToUserMap:', threadToUserMap); // Log the current state of the map
 
     // Send the message to Microsoft Teams using the incoming webhook
     await axios.post(TEAMS_WEBHOOK_URL, {
@@ -130,36 +131,30 @@ app.post('/send-to-teams', async (req, res) => {
   }
 });
 
+
 // Route to receive messages from Microsoft Teams (Outgoing Webhook) - Updation 2
 app.post('/receive-from-teams', (req, res) => {
   try {
-    console.log(
-      'Raw Payload received from Teams:',
-      JSON.stringify(req.body, null, 2)
-    );
+    // Log the full payload received from Teams
+    console.log('Raw Payload received from Teams:', JSON.stringify(req.body, null, 2));
 
     // Extract the conversation ID and message content from the Teams payload
     const conversationId = req.body.conversation.id.split(';')[0]; // Extract conversation ID before any message ID
-    const htmlContent =
-      req.body.text ||
-      (req.body.attachments && req.body.attachments[0]?.content);
+    const htmlContent = req.body.text || (req.body.attachments && req.body.attachments[0]?.content);
     const textContent = htmlContent.replace(/<\/?[^>]+(>|$)/g, ''); // Strip HTML tags
 
     console.log('Extracted message content:', textContent);
     console.log('Conversation ID:', conversationId);
+    console.log('Current threadToUserMap:', threadToUserMap);  // Log the current map here
 
     // Check if this conversationId is mapped to a specific chatbot user
-    const chatbotUserId = mapTeamsUserToChatbotUser(conversationId);
+    const chatbotUserId = threadToUserMap[conversationId];
 
     if (!chatbotUserId) {
-      throw new Error(
-        'Invalid payload: Unable to map conversation to chatbot user.'
-      );
+      throw new Error(`Invalid payload: Unable to map conversation to chatbot user. Conversation ID: ${conversationId}`);
     }
 
-    console.log(
-      `Mapped conversationId ${conversationId} to chatbot userId: ${chatbotUserId}`
-    );
+    console.log(`Mapped conversationId ${conversationId} to chatbot userId: ${chatbotUserId}`);
 
     // Emit the message to the correct chatbot user based on conversation ID
     if (textContent && chatbotUserId) {
@@ -169,18 +164,18 @@ app.post('/receive-from-teams', (req, res) => {
       });
       console.log(`Emitted message to room ${chatbotUserId}: ${textContent}`);
     } else {
-      console.log(
-        'No matching user found for this conversation. Message not emitted.'
-      );
+      console.log('No matching user found for this conversation. Message not emitted.');
     }
 
+    // Send a success response to Teams
     res.status(200).json({ text: 'Message received by the website' });
   } catch (error) {
+    // Log the error with detailed information
     console.error('Error processing the request:', error.message);
-    res
-      .status(500)
-      .json({ error: 'Internal Server Error', details: error.message });
+    res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
+});
+
 });
 
 // Socket.IO event handling
