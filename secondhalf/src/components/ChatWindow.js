@@ -25,11 +25,20 @@ const ChatWindow = forwardRef((props, ref) => {
   const loggedInUser = localStorage.getItem('loggedInUser');
   const loggedInUserId = userIdMap[loggedInUser]; // Map the username to the correct userId
 
+  // Fetch the last 50 messages for the user when component mounts
   useEffect(() => {
     if (!loggedInUserId) {
       alert('Invalid user! Please log in again.');
       return;
     }
+
+    // Fetch last 50 messages from the server for the logged-in user
+    fetch(
+      `https://chatbot008backend.onrender.com/get-messages/${loggedInUserId}`
+    )
+      .then((response) => response.json())
+      .then((data) => setMessages(data.slice(-50))) // Store only the last 50 messages
+      .catch((error) => console.error('Error fetching messages:', error));
 
     console.log(`Attempting to join room with userId: ${loggedInUserId}`);
 

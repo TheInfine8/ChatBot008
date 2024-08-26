@@ -4,6 +4,7 @@ const cors = require('cors');
 const axios = require('axios');
 const http = require('http');
 const socketIo = require('socket.io');
+const mongoose = require('mongoose'); // Assuming you are using MongoDB for storing chat history
 
 const app = express();
 const server = http.createServer(app);
@@ -53,10 +54,38 @@ const threadToUserMap = {
   '19:cxxxx@thread.tacv2': 'user3', // DRL's conversation ID (replace '19:cxxxx' with actual ID)
 };
 
+// Object to store user-specific chats in memory (You could replace this with a database like MongoDB)
+const userChats = {
+  user1: [], // Titan's chat messages
+  user2: [], // DCathelon's chat messages
+  user3: [], // DRL's chat messages
+};
+
 // Helper function to map Teams conversation ID to chatbot users
 const mapTeamsUserToChatbotUser = (conversationId) => {
   return threadToUserMap[conversationId] || null;
 };
+
+// Function to store the message for a specific user (in memory)
+const storeMessageForUser = (userId, message) => {
+  if (userChats[userId]) {
+    // Store only the last 50 messages
+    userChats[userId].push(message);
+    if (userChats[userId].length > 50) {
+      userChats[userId].shift(); // Remove the oldest message
+    }
+  }
+};
+
+// Route to get the last 50 messages for a user
+app.get('/get-messages/:userId', (req, res) => {
+  const userId = req.params.userId;
+  if (userChats[userId]) {
+    res.json(userChats[userId]);
+  } else {
+    res.status(404).json({ error: 'User not found' });
+  }
+});
 
 // Route to test backend connection
 app.get('/test-connection', (req, res) => {
@@ -120,7 +149,7 @@ app.post('/send-to-teams', async (req, res) => {
 });
 
 // Route to receive messages from Microsoft Teams (Outgoing Webhook)
-app.post('/receive-from-teams', async (req, res) => {
+app.post('/receive-from-teams', (req, res) => {
   try {
     console.log(
       'Raw Payload received from Teams:',
@@ -155,18 +184,9 @@ app.post('/receive-from-teams', async (req, res) => {
         text: textContent,
       });
 
-      // Save the message to MongoDB (if chat history is implemented)
-      const chat = await Chat.findOne({ userId: chatbotUserId });
-      if (chat) {
-        chat.messages.push({ user: false, text: textContent });
-        await chat.save();
-      } else {
-        const newChat = new Chat({
-          userId: chatbotUserId,
-          messages: [{ user: false, text: textContent }],
-        });
-        await newChat.save();
-      }
+      // Store the message in memory (or in a database like MongoDB)
+      storeMessageForUser(chatbotUserId, { user: false, text: textContent });
+      console.log(`Stored message for user: ${chatbotUserId}`);
 
       console.log(
         `Emitted cleaned message to room ${chatbotUserId}: ${textContent}`
@@ -181,6 +201,7 @@ app.post('/receive-from-teams', async (req, res) => {
       .json({ error: 'Internal Server Error', details: error.message });
   }
 });
+
 // Socket.IO event handling
 io.on('connection', (socket) => {
   console.log('New client connected');
