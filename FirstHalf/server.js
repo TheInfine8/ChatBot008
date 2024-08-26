@@ -58,23 +58,16 @@ app.post('/send-to-teams', async (req, res) => {
   try {
     console.log(`Sending message to Teams from user ${userId}: ${message}`);
 
+    // Generate a unique conversation ID for this message (since Teams Webhook doesn't return one)
+    const conversationId = `conv-${userId}-${Date.now()}`;
+    mapConversationIdToUser(userId, conversationId); // Map userId to conversationId
+
     // Send message to Microsoft Teams using the webhook
-    const response = await axios.post(TEAMS_WEBHOOK_URL, {
+    await axios.post(TEAMS_WEBHOOK_URL, {
       text: `Message from user ${userId}: ${message}`,
     });
 
-    // Assume conversation ID comes back in the response (modify this as needed)
-    const conversationId = response.data.conversation?.id;
-
-    if (!conversationId) {
-      console.error('Conversation ID is missing from response');
-      return res.status(500).json({ error: 'Failed to map conversation ID' });
-    }
-
-    // Map the conversation ID to the user
-    mapConversationIdToUser(userId, conversationId);
-
-    res.status(200).json({ success: true });
+    res.status(200).json({ success: true, conversationId });
   } catch (error) {
     console.error('Error sending message to Teams:', error.message);
     res.status(500).json({ error: 'Failed to send message to Teams' });
