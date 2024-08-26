@@ -139,7 +139,7 @@ app.post('/receive-from-teams', (req, res) => {
       JSON.stringify(req.body, null, 2)
     );
 
-    // Extract the conversation ID and message content from the Teams payload
+    // Extract conversation ID and message content
     const conversationId = req.body.conversation.id.split(';')[0];
     const htmlContent =
       req.body.text ||
@@ -153,17 +153,20 @@ app.post('/receive-from-teams', (req, res) => {
     // Check if this conversationId is mapped to a specific chatbot user
     let chatbotUserId = threadToUserMap[conversationId];
 
-    // If no mapping is found, try using other metadata (e.g., sender ID) to find the correct user
+    // If no mapping is found, use the AAD Object ID to identify the correct user
     if (!chatbotUserId) {
       const senderAadObjectId = req.body.from.aadObjectId;
       console.log(
         `Mismatched Conversation ID. Sender AAD Object ID: ${senderAadObjectId}`
       );
 
-      // Implement custom logic to map senderAadObjectId to a chatbot user
+      // Manual mapping based on AAD Object ID
       if (senderAadObjectId === '108d16ad-07a3-4dcf-88a2-88f4fcf28183') {
-        // Example AAD Object ID for DRL
-        chatbotUserId = 'user3'; // Map to DRL manually based on AAD Object ID
+        chatbotUserId = 'user3'; // DRL's AAD Object ID
+      } else if (senderAadObjectId === 'aad-object-id-for-user2') {
+        chatbotUserId = 'user2'; // Dcathelon's AAD Object ID
+      } else if (senderAadObjectId === 'aad-object-id-for-user1') {
+        chatbotUserId = 'user1'; // Titan's AAD Object ID
       }
     }
 
@@ -177,7 +180,7 @@ app.post('/receive-from-teams', (req, res) => {
       `Mapped conversationId ${conversationId} to chatbot userId: ${chatbotUserId}`
     );
 
-    // Emit the message to the correct chatbot user based on conversation ID
+    // Emit the message to the correct chatbot user based on conversation ID or AAD Object ID
     if (textContent && chatbotUserId) {
       io.to(chatbotUserId).emit('chat message', {
         user: false,
@@ -197,20 +200,6 @@ app.post('/receive-from-teams', (req, res) => {
       .status(500)
       .json({ error: 'Internal Server Error', details: error.message });
   }
-});
-
-// Socket.IO event handling
-io.on('connection', (socket) => {
-  console.log('New client connected');
-
-  socket.on('join', (userId) => {
-    console.log(`User ${userId} joined room`);
-    socket.join(userId); // Assign user to a specific room
-  });
-
-  socket.on('disconnect', (reason) => {
-    console.log(`Client disconnected: ${reason}`); // Log reason for disconnection
-  });
 });
 
 // Start the server
