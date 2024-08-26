@@ -8,16 +8,13 @@ const socketIo = require('socket.io');
 const app = express();
 const server = http.createServer(app);
 
-// In-memory conversation ID mapping (You can replace this with a database if needed)
-const conversationMap = {}; // To store { userId: { conversationId } }
-
 // CORS configuration for Express
 app.use(
   cors({
     origin: 'https://frontendchatbot.onrender.com', // Update this to your deployed frontend URL
     methods: ['GET', 'POST', 'HEAD', 'PUT', 'PATCH', 'DELETE'],
     credentials: true, // Allow credentials (cookies, auth headers, etc.)
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization'], // Allow specific headers
   })
 );
 
@@ -30,24 +27,51 @@ const io = socketIo(server, {
     allowedHeaders: ['Content-Type', 'Authorization'],
   },
   transports: ['websocket', 'polling'], // Ensure both WebSocket and polling are allowed
-  pingTimeout: 90000, // Increase ping timeout to 90 seconds
-  pingInterval: 30000, // Increase ping interval to 30 seconds
+  pingTimeout: 90000, // Increase ping timeout to 60 seconds
+  pingInterval: 30000, // Increase ping interval to 25 seconds
 });
 
 // Body-parser middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Microsoft Teams Incoming Webhook URL
+// Microsoft Teams Incoming Webhook URL (for Outgoing Webhook from Teams)
 const TEAMS_WEBHOOK_URL =
   'https://filoffeesoftwarepvtltd.webhook.office.com/webhookb2/dce0c08f-a7b6-429f-9473-4ebfbb453002@0644003f-0b3f-4517-814d-768fa69ab4ae/IncomingWebhook/023b8776e0884ae9821430ccad34e0a8/108d16ad-07a3-4dcf-88a2-88f4fcf28183';
 
-// Function to dynamically map conversation IDs to user IDs
-const mapConversationIdToUser = (userId, conversationId) => {
-  conversationMap[userId] = { id: conversationId };
+// Mock user data to simulate different users
+const users = {
+  user1: { id: 1, email: 'Titan@example.com', name: 'Titan' },
+  user2: { id: 2, email: 'DCathelon@example.com', name: 'DCathelon' },
+  user3: { id: 3, email: 'DRL@example.com', name: 'DRL' },
 };
 
-// Route to send messages from the chatbot to Microsoft Teams
+// Object to store mapping of thread IDs to chatbot user IDs
+const threadToUserMap = {};
+
+// Helper function to map Teams conversation ID to chatbot users
+const mapTeamsUserToChatbotUser = (conversationId) => {
+  return threadToUserMap[conversationId] || null;
+};
+
+// Route to test backend connection
+app.get('/test-connection', (req, res) => {
+  res.status(200).send('Backend is reachable');
+});
+
+// Route to test Socket.IO connection by emitting a message to a user
+app.get('/test-socket', (req, res) => {
+  const testMessage = 'Test message from backend';
+  const testUserId = 'user1'; // Change to 'user2' or 'user3' to test for other users
+
+  // Emit the test message to the specific user room
+  io.to(testUserId).emit('chat message', { user: false, text: testMessage });
+
+  console.log(`Test message emitted to room ${testUserId}: ${testMessage}`);
+  res.status(200).send(`Test message sent to ${testUserId}`);
+});
+
+// Route to send messages from the website's chatbot to Microsoft Teams
 app.post('/send-to-teams', async (req, res) => {
   const { message, userId } = req.body;
 
@@ -55,56 +79,92 @@ app.post('/send-to-teams', async (req, res) => {
     return res.status(400).json({ error: 'Message and user ID are required' });
   }
 
+  const user = users[userId];
+
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
   try {
-    console.log(`Sending message to Teams from user ${userId}: ${message}`);
+    console.log(`Message being sent to Teams from ${user.email}:`, message);
 
-    // Generate a unique conversation ID for this message (since Teams Webhook doesn't return one)
-    const conversationId = `conv-${userId}-${Date.now()}`;
-    mapConversationIdToUser(userId, conversationId); // Map userId to conversationId
-
-    // Send message to Microsoft Teams using the webhook
-    await axios.post(TEAMS_WEBHOOK_URL, {
-      text: `Message from user ${userId}: ${message}`,
+    // Send the message to Microsoft Teams using the incoming webhook
+    const response = await axios.post(TEAMS_WEBHOOK_URL, {
+      text: `Message from ${user.name} (${user.email}): ${message}`,
     });
 
-    res.status(200).json({ success: true, conversationId });
+    // Manually assign the conversationId based on the user (replace with dynamic ID if needed)
+    let conversationId;
+    if (userId === 'user1') {
+      conversationId = '19:a705dff9e44740a787d8e1813a38a2dd@thread.tacv2'; // Titan's conversationId
+    } else if (userId === 'user2') {
+      conversationId = '19:bxxxx@thread.tacv2'; // Dcathelon's conversationId
+    } else if (userId === 'user3') {
+      conversationId = '19:cxxxx@thread.tacv2'; // DRL's conversationId
+    }
+
+    // Store the mapping of conversation ID to the chatbot user
+    threadToUserMap[conversationId] = userId;
+
+    console.log(`Mapped conversationId ${conversationId} to userId ${userId}`);
+
+    res.status(200).json({ success: true });
   } catch (error) {
-    console.error('Error sending message to Teams:', error.message);
+    console.error('Error sending message to Teams:', error);
     res.status(500).json({ error: 'Failed to send message to Teams' });
   }
 });
 
-// Route to receive messages from Microsoft Teams
+// Route to receive messages from Microsoft Teams (Outgoing Webhook)
 app.post('/receive-from-teams', (req, res) => {
   try {
     console.log(
-      'Received payload from Teams:',
+      'Raw Payload received from Teams:',
       JSON.stringify(req.body, null, 2)
     );
 
     // Extract the conversation ID and message content from the Teams payload
-    const conversationId = req.body.conversation.id.split(';')[0];
-    const textContent = req.body.text.replace(/<\/?[^>]+(>|$)/g, '').trim();
+    const conversationId = req.body.conversation.id.split(';')[0]; // Extract conversation ID before any message ID
+    const htmlContent =
+      req.body.text ||
+      (req.body.attachments && req.body.attachments[0]?.content);
+    const textContent = htmlContent.replace(/<\/?[^>]+(>|$)/g, ''); // Strip HTML tags
 
-    // Find the user by matching the conversation ID
-    const userId = Object.keys(conversationMap).find(
-      (key) => conversationMap[key].id === conversationId
-    );
+    console.log('Extracted message content:', textContent);
+    console.log('Conversation ID:', conversationId);
 
-    if (!userId) {
-      throw new Error('Conversation ID not mapped to any user.');
+    // Check if this conversationId is mapped to a specific chatbot user
+    const chatbotUserId = mapTeamsUserToChatbotUser(conversationId);
+
+    if (!chatbotUserId) {
+      throw new Error(
+        'Invalid payload: Unable to map conversation to chatbot user.'
+      );
     }
 
-    console.log(`Mapped conversation ID ${conversationId} to user ${userId}`);
-    console.log(`Message content: ${textContent}`);
+    console.log(
+      `Mapped conversationId ${conversationId} to chatbot userId: ${chatbotUserId}`
+    );
 
-    // Emit the message to the user's chat window
-    io.to(userId).emit('chat message', { user: false, text: textContent });
+    // Emit the message to the correct chatbot user based on conversation ID
+    if (textContent && chatbotUserId) {
+      io.to(chatbotUserId).emit('chat message', {
+        user: false,
+        text: textContent,
+      });
+      console.log(`Emitted message to room ${chatbotUserId}: ${textContent}`);
+    } else {
+      console.log(
+        'No matching user found for this conversation. Message not emitted.'
+      );
+    }
 
     res.status(200).json({ text: 'Message received by the website' });
   } catch (error) {
-    console.error('Error processing Teams message:', error.message);
-    res.status(500).json({ error: 'Internal Server Error' });
+    console.error('Error processing the request:', error.message);
+    res
+      .status(500)
+      .json({ error: 'Internal Server Error', details: error.message });
   }
 });
 
@@ -112,20 +172,18 @@ app.post('/receive-from-teams', (req, res) => {
 io.on('connection', (socket) => {
   console.log('New client connected');
 
-  // Event for when a user joins a room
   socket.on('join', (userId) => {
     console.log(`User ${userId} joined room`);
-    socket.join(userId); // Assign the user to a specific room
+    socket.join(userId); // Assign user to a specific room
   });
 
-  // Event for disconnection
   socket.on('disconnect', (reason) => {
-    console.log(`Client disconnected: ${reason}`);
+    console.log(`Client disconnected: ${reason}`); // Log reason for disconnection
   });
 });
 
 // Start the server
-const port = process.env.PORT || 5002;
+const port = process.env.PORT || 5002; // Use Render-assigned port or default to 5002
 server.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log(`Server is running on port ${port}`);
 });
