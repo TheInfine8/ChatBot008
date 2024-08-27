@@ -98,22 +98,11 @@ app.post('/send-to-teams', async (req, res) => {
     // Add the message to the message store
     messageStore[userId].push({ user: true, text: message });
 
-    // Send the message to Microsoft Teams using the incoming webhook
     const response = await axios.post(TEAMS_WEBHOOK_URL, {
       text: `Message from ${user.name} (${user.email}): ${message}`,
     });
 
-    // Retrieve the conversation ID from the response (or a relevant mechanism) to map it
-    let conversationId;
-    if (userId === 'user1') {
-      conversationId = '19:a705dff9e44740a787d8e1813a38a2dd@thread.tacv2'; // Titan's conversationId
-    } else if (userId === 'user2') {
-      conversationId = '19:bxxxx@thread.tacv2'; // Dcathelon's conversationId
-    } else if (userId === 'user3') {
-      conversationId = '19:cxxxx@thread.tacv2'; // DRL's conversationId
-    }
-
-    // Store the conversation ID in threadToUserMap
+    const conversationId = response.data.id || `19:${userId}@thread.tacv2`;
     threadToUserMap[conversationId] = userId;
 
     console.log(`Mapped conversationId ${conversationId} to userId ${userId}`);
@@ -124,6 +113,7 @@ app.post('/send-to-teams', async (req, res) => {
     res.status(500).json({ error: 'Failed to send message to Teams' });
   }
 });
+
 // Route to receive messages from Microsoft Teams
 app.post('/receive-from-teams', (req, res) => {
   try {
@@ -141,7 +131,6 @@ app.post('/receive-from-teams', (req, res) => {
     console.log('Extracted message content:', textContent);
     console.log('Conversation ID:', conversationId);
 
-    // Check if this conversationId is mapped to a specific chatbot user
     const chatbotUserId = mapTeamsUserToChatbotUser(conversationId);
 
     if (!chatbotUserId) {
@@ -171,6 +160,11 @@ app.post('/receive-from-teams', (req, res) => {
       .status(500)
       .json({ error: 'Internal Server Error', details: error.message });
   }
+});
+
+// Handle undefined routes with a JSON 404 response
+app.use((req, res) => {
+  res.status(404).json({ error: 'Resource not found' });
 });
 
 // Socket.IO event handling
