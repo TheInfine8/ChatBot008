@@ -36,7 +36,8 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Microsoft Teams Incoming Webhook URL (for Outgoing Webhook from Teams)
-const TEAMS_WEBHOOK_URL = 'https://filoffeesoftwarepvtltd.webhook.office.com/webhookb2/dce0c08f-a7b6-429f-9473-4ebfbb453002@0644003f-0b3f-4517-814d-768fa69ab4ae/IncomingWebhook/023b8776e0884ae9821430ccad34e0a8/108d16ad-07a3-4dcf-88a2-88f4fcf28183';
+const TEAMS_WEBHOOK_URL =
+  'https://filoffeesoftwarepvtltd.webhook.office.com/webhookb2/dce0c08f-a7b6-429f-9473-4ebfbb453002@0644003f-0b3f-4517-814d-768fa69ab4ae/IncomingWebhook/023b8776e0884ae9821430ccad34e0a8/108d16ad-07a3-4dcf-88a2-88f4fcf28183';
 
 // Mock user data to simulate different users
 const users = {
@@ -97,19 +98,22 @@ app.post('/send-to-teams', async (req, res) => {
     // Add the message to the message store
     messageStore[userId].push({ user: true, text: message });
 
+    // Send the message to Microsoft Teams using the incoming webhook
     const response = await axios.post(TEAMS_WEBHOOK_URL, {
       text: `Message from ${user.name} (${user.email}): ${message}`,
     });
 
+    // Retrieve the conversation ID from the response (or a relevant mechanism) to map it
     let conversationId;
     if (userId === 'user1') {
-      conversationId = '19:a705dff9e44740a787d8e1813a38a2dd@thread.tacv2';
+      conversationId = '19:a705dff9e44740a787d8e1813a38a2dd@thread.tacv2'; // Titan's conversationId
     } else if (userId === 'user2') {
-      conversationId = '19:bxxxx@thread.tacv2';
+      conversationId = '19:bxxxx@thread.tacv2'; // Dcathelon's conversationId
     } else if (userId === 'user3') {
-      conversationId = '19:cxxxx@thread.tacv2';
+      conversationId = '19:cxxxx@thread.tacv2'; // DRL's conversationId
     }
 
+    // Store the conversation ID in threadToUserMap
     threadToUserMap[conversationId] = userId;
 
     console.log(`Mapped conversationId ${conversationId} to userId ${userId}`);
@@ -120,7 +124,6 @@ app.post('/send-to-teams', async (req, res) => {
     res.status(500).json({ error: 'Failed to send message to Teams' });
   }
 });
-
 // Route to receive messages from Microsoft Teams
 app.post('/receive-from-teams', (req, res) => {
   try {
@@ -138,6 +141,7 @@ app.post('/receive-from-teams', (req, res) => {
     console.log('Extracted message content:', textContent);
     console.log('Conversation ID:', conversationId);
 
+    // Check if this conversationId is mapped to a specific chatbot user
     const chatbotUserId = mapTeamsUserToChatbotUser(conversationId);
 
     if (!chatbotUserId) {
@@ -169,11 +173,6 @@ app.post('/receive-from-teams', (req, res) => {
   }
 });
 
-// Handle undefined routes with a JSON 404 response
-app.use((req, res) => {
-  res.status(404).json({ error: 'Resource not found' });
-});
-
 // Socket.IO event handling
 io.on('connection', (socket) => {
   console.log('New client connected');
@@ -193,4 +192,3 @@ const port = process.env.PORT || 5002; // Use Render-assigned port or default to
 server.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
-

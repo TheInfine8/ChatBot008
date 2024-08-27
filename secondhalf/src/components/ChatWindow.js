@@ -33,21 +33,30 @@ const ChatWindow = forwardRef((props, ref) => {
     }
 
     // Fetch last 50 messages from the server for the logged-in user
-    fetch(`https://chatbot008backend.onrender.com/get-messages/${loggedInUserId}`)
-  .then((response) => response.json())
-  .then((data) => {
-    if (Array.isArray(data)) {
-      // If data is an array, slice the last 50 messages
-      setMessages(data.slice(-50));
-    } else {
-      console.error('Unexpected data format, expected an array:', data);
-      setMessages([]); // Set messages to an empty array if data format is incorrect
-    }
-  })
-  .catch((error) => console.error('Error fetching messages:', error));
+    fetch(
+      `https://chatbot008backend.onrender.com/get-messages/${loggedInUserId}`
+    )
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (data.messages && Array.isArray(data.messages)) {
+          // If data contains messages and it's an array, slice the last 50 messages
+          setMessages(data.messages.slice(-50));
+        } else {
+          console.error(
+            'Unexpected data format, expected { messages: [] }:',
+            data
+          );
+          setMessages([]); // Set messages to an empty array if data format is incorrect
+        }
+      })
+      .catch((error) => console.error('Error fetching messages:', error));
 
-console.log(`Attempting to join room with userId: ${loggedInUserId}`);
-
+    console.log(`Attempting to join room with userId: ${loggedInUserId}`);
 
     // Join the user's room when the component mounts
     socket.emit('join', loggedInUserId, (ack) => {
