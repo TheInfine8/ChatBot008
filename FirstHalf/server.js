@@ -118,33 +118,35 @@ app.post('/send-to-teams', async (req, res) => {
 // Route to receive messages from Microsoft Teams (Outgoing Webhook)
 app.post('/receive-from-teams', (req, res) => {
   try {
-    const conversationId = req.body.conversation.id.split(';')[0];
-    const htmlContent =
-      req.body.text ||
-      (req.body.attachments && req.body.attachments[0]?.content);
+    console.log('Raw Payload received from Teams:', JSON.stringify(req.body, null, 2));
+
+    const conversationId = req.body.conversation.id.split(';')[0];  // Extract conversation ID
+    const htmlContent = req.body.text || (req.body.attachments && req.body.attachments[0]?.content);
     const textContent = htmlContent.replace(/<\/?[^>]+(>|$)/g, ''); // Strip HTML tags
 
     console.log('Extracted message content:', textContent);
     console.log('Conversation ID:', conversationId);
 
-    // Check for user mention
-    let chatbotUserId;
-    if (textContent.startsWith('@Titan')) {
-      chatbotUserId = 'user1'; // Titan
-    } else if (textContent.startsWith('@DCathelon')) {
-      chatbotUserId = 'user2'; // Dcathelon
-    } else if (textContent.startsWith('@DRL')) {
-      chatbotUserId = 'user3'; // DRL
-    }
+    // Use conversationId to map to userId
+    const chatbotUserId = conversationToUserMap[conversationId];
 
     if (!chatbotUserId) {
-      throw new Error(
-        'Invalid payload: Unable to map message to chatbot user.'
-      );
+      throw new Error('Invalid payload: Unable to map conversation ID to chatbot user.');
     }
 
-    // Remove the @mention from the message before sending it to the user
-    const finalMessage = textContent.replace(/^@\w+\s*/, '');
+    // Check for user mention and adjust the message
+    let finalMessage = textContent;
+
+    if (finalMessage.includes('@Titan')) {
+      chatbotUserId = 'user1';  // Titan
+      finalMessage = finalMessage.replace('@Titan', '').trim(); // Remove mention from message
+    } else if (finalMessage.includes('@DCathelon')) {
+      chatbotUserId = 'user2';  // Dcathelon
+      finalMessage = finalMessage.replace('@DCathelon', '').trim();
+    } else if (finalMessage.includes('@DRL')) {
+      chatbotUserId = 'user3';  // DRL
+      finalMessage = finalMessage.replace('@DRL', '').trim();
+    }
 
     // Emit the message to the correct chatbot user based on mention
     if (finalMessage && chatbotUserId) {
@@ -159,9 +161,7 @@ app.post('/receive-from-teams', (req, res) => {
     res.status(200).json({ text: 'Message received by the website' });
   } catch (error) {
     console.error('Error processing the request:', error.message);
-    res
-      .status(500)
-      .json({ error: 'Internal Server Error', details: error.message });
+    res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 });
 
