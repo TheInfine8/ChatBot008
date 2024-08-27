@@ -53,12 +53,11 @@ const messageStore = {
   user3: [],
 };
 
-// Object to store mapping of thread IDs to chatbot user IDs
-const threadToUserMap = {};
-
-// Helper function to map Teams conversation ID to chatbot users
-const mapTeamsUserToChatbotUser = (conversationId) => {
-  return threadToUserMap[conversationId] || null;
+// Object to store mapping of conversation IDs to chatbot user IDs
+const conversationToUserMap = {
+  '19:a705dff9e44740a787d8e1813a38a2dd@thread.tacv2': 'user1',  // Titan's conversation
+  '19:bxxxx@thread.tacv2': 'user2',                             // Dcathelon's conversation
+  '19:cxxxx@thread.tacv2': 'user3'                              // DRL's conversation
 };
 
 // Route to fetch the last 50 messages for a user
@@ -105,11 +104,11 @@ app.post('/send-to-teams', async (req, res) => {
     // Extract the conversationId from the response or set it dynamically based on the user
     let conversationId = response.data.id || `19:${userId}@thread.tacv2`;
 
-    // Update threadToUserMap
-    threadToUserMap[conversationId] = userId;
+    // Update conversationToUserMap
+    conversationToUserMap[conversationId] = userId;
 
     console.log(`Mapped conversationId ${conversationId} to userId ${userId}`);
-    console.log('Updated threadToUserMap:', threadToUserMap);
+    console.log('Updated conversationToUserMap:', conversationToUserMap);
 
     res.status(200).json({ success: true });
   } catch (error) {
@@ -118,26 +117,26 @@ app.post('/send-to-teams', async (req, res) => {
   }
 });
 
-
 // Route to receive messages from Microsoft Teams
 app.post('/receive-from-teams', (req, res) => {
   try {
     console.log('Raw Payload received from Teams:', JSON.stringify(req.body, null, 2));
 
-    const conversationId = req.body.conversation.id.split(';')[0];
+    const conversationId = req.body.conversation.id.split(';')[0];  // Extract conversation ID
     const htmlContent = req.body.text || (req.body.attachments && req.body.attachments[0]?.content);
     const textContent = htmlContent.replace(/<\/?[^>]+(>|$)/g, ''); // Strip HTML tags
 
     console.log('Extracted message content:', textContent);
     console.log('Conversation ID:', conversationId);
 
-    const chatbotUserId = mapTeamsUserToChatbotUser(conversationId);
+    // Use conversationId to map to userId
+    const chatbotUserId = conversationToUserMap[conversationId];
 
     if (!chatbotUserId) {
-      throw new Error('Invalid payload: Unable to map conversation to chatbot user.');
+      throw new Error('Invalid payload: Unable to map conversation ID to chatbot user.');
     }
 
-    // Emit the message to the correct chatbot user based on conversation ID
+    // Emit the message to the correct chatbot user based on conversationId
     if (textContent && chatbotUserId) {
       messageStore[chatbotUserId].push({ user: false, text: textContent });
       io.to(chatbotUserId).emit('chat message', {
@@ -146,7 +145,7 @@ app.post('/receive-from-teams', (req, res) => {
       });
       console.log(`Emitted message to room ${chatbotUserId}: ${textContent}`);
     } else {
-      console.log('No matching user found for this conversation. Message not emitted.');
+      console.log('No matching user found for this conversation ID. Message not emitted.');
     }
 
     res.status(200).json({ text: 'Message received by the website' });
@@ -155,7 +154,6 @@ app.post('/receive-from-teams', (req, res) => {
     res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 });
-
 
 // Handle undefined routes with a JSON 404 response
 app.use((req, res) => {
