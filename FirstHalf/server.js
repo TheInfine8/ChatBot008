@@ -118,13 +118,7 @@ app.post('/send-to-teams', async (req, res) => {
 // Route to receive messages from Microsoft Teams (Outgoing Webhook)
 app.post('/receive-from-teams', (req, res) => {
   try {
-    console.log(
-      'Raw Payload received from Teams:',
-      JSON.stringify(req.body, null, 2)
-    );
-
-    // Extract the conversation ID and message content from the Teams payload
-    const conversationId = req.body.conversation.id.split(';')[0]; // Extract conversation ID before any message ID
+    const conversationId = req.body.conversation.id.split(';')[0];
     const htmlContent =
       req.body.text ||
       (req.body.attachments && req.body.attachments[0]?.content);
@@ -133,30 +127,33 @@ app.post('/receive-from-teams', (req, res) => {
     console.log('Extracted message content:', textContent);
     console.log('Conversation ID:', conversationId);
 
-    // Check if this conversationId is mapped to a specific chatbot user
-    const chatbotUserId = mapTeamsUserToChatbotUser(conversationId);
+    // Check for user mention
+    let chatbotUserId;
+    if (textContent.startsWith('@Titan')) {
+      chatbotUserId = 'user1'; // Titan
+    } else if (textContent.startsWith('@DCathelon')) {
+      chatbotUserId = 'user2'; // Dcathelon
+    } else if (textContent.startsWith('@DRL')) {
+      chatbotUserId = 'user3'; // DRL
+    }
 
     if (!chatbotUserId) {
       throw new Error(
-        'Invalid payload: Unable to map conversation to chatbot user.'
+        'Invalid payload: Unable to map message to chatbot user.'
       );
     }
 
-    console.log(
-      `Mapped conversationId ${conversationId} to chatbot userId: ${chatbotUserId}`
-    );
+    // Remove the @mention from the message before sending it to the user
+    const finalMessage = textContent.replace(/^@\w+\s*/, '');
 
-    // Emit the message to the correct chatbot user based on conversation ID
-    if (textContent && chatbotUserId) {
+    // Emit the message to the correct chatbot user based on mention
+    if (finalMessage && chatbotUserId) {
+      messageStore[chatbotUserId].push({ user: false, text: finalMessage });
       io.to(chatbotUserId).emit('chat message', {
         user: false,
-        text: textContent,
+        text: finalMessage,
       });
-      console.log(`Emitted message to room ${chatbotUserId}: ${textContent}`);
-    } else {
-      console.log(
-        'No matching user found for this conversation. Message not emitted.'
-      );
+      console.log(`Emitted message to room ${chatbotUserId}: ${finalMessage}`);
     }
 
     res.status(200).json({ text: 'Message received by the website' });
