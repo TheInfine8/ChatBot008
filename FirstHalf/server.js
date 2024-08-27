@@ -102,10 +102,14 @@ app.post('/send-to-teams', async (req, res) => {
       text: `Message from ${user.name} (${user.email}): ${message}`,
     });
 
-    const conversationId = response.data.id || `19:${userId}@thread.tacv2`;
+    // Extract the conversationId from the response or set it dynamically based on the user
+    let conversationId = response.data.id || `19:${userId}@thread.tacv2`;
+
+    // Update threadToUserMap
     threadToUserMap[conversationId] = userId;
 
     console.log(`Mapped conversationId ${conversationId} to userId ${userId}`);
+    console.log('Updated threadToUserMap:', threadToUserMap);
 
     res.status(200).json({ success: true });
   } catch (error) {
@@ -114,18 +118,14 @@ app.post('/send-to-teams', async (req, res) => {
   }
 });
 
+
 // Route to receive messages from Microsoft Teams
 app.post('/receive-from-teams', (req, res) => {
   try {
-    console.log(
-      'Raw Payload received from Teams:',
-      JSON.stringify(req.body, null, 2)
-    );
+    console.log('Raw Payload received from Teams:', JSON.stringify(req.body, null, 2));
 
     const conversationId = req.body.conversation.id.split(';')[0];
-    const htmlContent =
-      req.body.text ||
-      (req.body.attachments && req.body.attachments[0]?.content);
+    const htmlContent = req.body.text || (req.body.attachments && req.body.attachments[0]?.content);
     const textContent = htmlContent.replace(/<\/?[^>]+(>|$)/g, ''); // Strip HTML tags
 
     console.log('Extracted message content:', textContent);
@@ -134,9 +134,7 @@ app.post('/receive-from-teams', (req, res) => {
     const chatbotUserId = mapTeamsUserToChatbotUser(conversationId);
 
     if (!chatbotUserId) {
-      throw new Error(
-        'Invalid payload: Unable to map conversation to chatbot user.'
-      );
+      throw new Error('Invalid payload: Unable to map conversation to chatbot user.');
     }
 
     // Emit the message to the correct chatbot user based on conversation ID
@@ -148,19 +146,16 @@ app.post('/receive-from-teams', (req, res) => {
       });
       console.log(`Emitted message to room ${chatbotUserId}: ${textContent}`);
     } else {
-      console.log(
-        'No matching user found for this conversation. Message not emitted.'
-      );
+      console.log('No matching user found for this conversation. Message not emitted.');
     }
 
     res.status(200).json({ text: 'Message received by the website' });
   } catch (error) {
     console.error('Error processing the request:', error.message);
-    res
-      .status(500)
-      .json({ error: 'Internal Server Error', details: error.message });
+    res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 });
+
 
 // Handle undefined routes with a JSON 404 response
 app.use((req, res) => {
