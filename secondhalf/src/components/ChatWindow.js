@@ -6,8 +6,34 @@ import io from 'socket.io-client';
 const socket = io('https://chatbot008backend.onrender.com', {
   withCredentials: true,
   transports: ['websocket', 'polling'],
-  reconnectionAttempts: 5, // Limit reconnection attempts
-  reconnectionDelay: 2000, // Delay between reconnection attempts
+  reconnectionAttempts: 10, // Retry up to 10 times
+  reconnectionDelay: 3000, // 3 seconds delay between retries
+  timeout: 30000, // Timeout after 30 seconds
+});
+
+// Log WebSocket connection events
+socket.on('connect', () => {
+  console.log('WebSocket connected');
+});
+
+socket.on('disconnect', (reason) => {
+  console.log('WebSocket disconnected:', reason);
+  if (reason === 'io server disconnect') {
+    // The disconnection was initiated by the server, so we manually reconnect
+    socket.connect();
+  }
+});
+
+socket.on('reconnect_attempt', (attempt) => {
+  console.log(`Reconnect attempt ${attempt}`);
+});
+
+socket.on('reconnect_error', (error) => {
+  console.error('Reconnect error:', error);
+});
+
+socket.on('reconnect_failed', () => {
+  console.error('Failed to reconnect to WebSocket');
 });
 
 const ChatWindow = forwardRef((props, ref) => {
