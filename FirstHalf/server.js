@@ -111,6 +111,7 @@ app.post('/send-to-teams', async (req, res) => {
 });
 
 // Route to receive messages from Microsoft Teams
+// Route to receive messages from Microsoft Teams
 app.post('/receive-from-teams', (req, res) => {
   try {
     console.log(
@@ -125,9 +126,9 @@ app.post('/receive-from-teams', (req, res) => {
 
     console.log('Extracted message content:', textContent);
 
-    // Extract the custom user identifier from the message content
+    // Extract the correct user identifier (e.g., @Titan, @Dcathelon, @DRL) from the message content
     const userId = Object.keys(users).find((userId) =>
-      textContent.startsWith(`@${users[userId].name}:`)
+      textContent.includes(`@${users[userId].name}:`)
     );
 
     if (!userId) {
@@ -136,12 +137,12 @@ app.post('/receive-from-teams', (req, res) => {
       );
     }
 
-    // Clean the message to remove the identifier
+    // Clean the message by removing the @mention (e.g., @Titan:) from the message text
     const cleanMessage = textContent
       .replace(`@${users[userId].name}:`, '')
       .trim();
 
-    // Emit the message to the correct chatbot user based on the identifier
+    // Emit the cleaned message to the correct chatbot user based on the identifier
     if (cleanMessage && userId) {
       messageStore[userId].push({ user: false, text: cleanMessage });
       io.to(userId).emit('chat message', {
