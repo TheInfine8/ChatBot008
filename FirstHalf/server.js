@@ -111,7 +111,6 @@ app.post('/send-to-teams', async (req, res) => {
 });
 
 // Route to receive messages from Microsoft Teams
-// Route to receive messages from Microsoft Teams
 app.post('/receive-from-teams', (req, res) => {
   try {
     console.log(
@@ -123,20 +122,21 @@ app.post('/receive-from-teams', (req, res) => {
     const htmlContent =
       req.body.text ||
       (req.body.attachments && req.body.attachments[0]?.content);
-    const textContent = htmlContent.replace(/<\/?[^>]+(>|$)/g, ''); // Strip HTML tags
+    const textContent = htmlContent.replace(/<\/?[^>]+(>|$)/g, '').trim(); // Strip HTML tags and trim spaces
 
     console.log('Extracted message content:', textContent);
 
     // Clean the message content to remove extra spaces and ensure correct format
-    const cleanedContent = textContent.replace(/\s+/g, ' ').trim(); // Clean up multiple spaces
+    const cleanedContent = textContent.replace(/\s+/g, ' ').trim();
 
     // Log cleaned content for debugging
     console.log('Cleaned Content:', cleanedContent);
 
-    // Look for the mention in the message and extract the user mention
-    const matchedUser = Object.keys(users).find((userId) =>
-      cleanedContent.includes(`@${users[userId].name}`)
-    );
+    // Modify the logic to handle possible extra characters (like ":")
+    const matchedUser = Object.keys(users).find((userId) => {
+      const userMentionPattern = new RegExp(`@${users[userId].name}`, 'i'); // Create a case-insensitive pattern
+      return userMentionPattern.test(cleanedContent); // Test if the cleaned content contains the mention
+    });
 
     // Log the identified user for debugging
     console.log('Matched User:', matchedUser);
@@ -148,9 +148,9 @@ app.post('/receive-from-teams', (req, res) => {
       );
     }
 
-    // Clean the message by removing the @mention (e.g., @Dcathelon:) from the message text
+    // Clean the message by removing the @mention (e.g., @Dcathelon) from the message text
     const cleanMessage = cleanedContent
-      .replace(`@${users[matchedUser].name}:`, '')
+      .replace(`@${users[matchedUser].name}`, '')
       .trim();
 
     // Log cleaned message for debugging
@@ -178,7 +178,6 @@ app.post('/receive-from-teams', (req, res) => {
       .json({ error: 'Internal Server Error', details: error.message });
   }
 });
-
 // Handle undefined routes with a JSON 404 response
 app.use((req, res) => {
   res.status(404).json({ error: 'Resource not found' });
