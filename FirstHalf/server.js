@@ -111,6 +111,7 @@ app.post('/send-to-teams', async (req, res) => {
 });
 
 // Route to receive messages from Microsoft Teams
+// Route to receive messages from Microsoft Teams
 app.post('/receive-from-teams', (req, res) => {
   try {
     console.log(
@@ -126,9 +127,15 @@ app.post('/receive-from-teams', (req, res) => {
 
     console.log('Extracted message content:', textContent);
 
+    // Clean the message content to remove extra spaces and ensure correct format
+    const cleanedContent = textContent.replace(/\s+/g, ' ').trim(); // Clean up multiple spaces
+
+    // Log cleaned content for debugging
+    console.log('Cleaned Content:', cleanedContent);
+
     // Look for the mention in the message and extract the user mention
     const matchedUser = Object.keys(users).find((userId) =>
-      textContent.includes(`@${users[userId].name}`)
+      cleanedContent.includes(`@${users[userId].name}`)
     );
 
     // Log the identified user for debugging
@@ -142,7 +149,7 @@ app.post('/receive-from-teams', (req, res) => {
     }
 
     // Clean the message by removing the @mention (e.g., @Dcathelon:) from the message text
-    const cleanMessage = textContent
+    const cleanMessage = cleanedContent
       .replace(`@${users[matchedUser].name}:`, '')
       .trim();
 
