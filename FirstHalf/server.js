@@ -27,8 +27,8 @@ const io = socketIo(server, {
     allowedHeaders: ['Content-Type', 'Authorization'],
   },
   transports: ['websocket', 'polling'],
-  pingTimeout: 120000,  // Set ping timeout to 120 seconds (2 minutes)
-  pingInterval: 30000,  // Set ping interval to 30 seconds
+  pingTimeout: 90000, // Increase ping timeout to 60 seconds
+  pingInterval: 30000, // Increase ping interval to 25 seconds
 });
 
 // Body-parser middleware
@@ -36,8 +36,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Microsoft Teams Incoming Webhook URL (for Outgoing Webhook from Teams)
-const TEAMS_WEBHOOK_URL =
-  'https://filoffeesoftwarepvtltd.webhook.office.com/webhookb2/dce0c08f-a7b6-429f-9473-4ebfbb453002@0644003f-0b3f-4517-814d-768fa69ab4ae/IncomingWebhook/023b8776e0884ae9821430ccad34e0a8/108d16ad-07a3-4dcf-88a2-88f4fcf28183';
+const TEAMS_WEBHOOK_URL = 'https://your-teams-webhook-url';
 
 // Mock user data to simulate different users
 const users = {
@@ -53,11 +52,9 @@ const messageStore = {
   user3: [],
 };
 
-// Define conversationToUserMap
-const conversationToUserMap = {
-  '19:a705dff9e44740a787d8e1813a38a2dd@thread.tacv2': 'user1', // Titan's conversation
-  '19:bxxxx@thread.tacv2': 'user2', // Dcathelon's conversation
-  '19:cxxxx@thread.tacv2': 'user3', // DRL's conversation
+// Function to include a custom identifier in the outgoing message
+const formatMessageWithUser = (message, userId) => {
+  return `@${users[userId].name}: ${message}`;
 };
 
 // Route to fetch the last 50 messages for a user
@@ -92,23 +89,18 @@ app.post('/send-to-teams', async (req, res) => {
   }
 
   try {
-    console.log(`Message being sent to Teams from ${user.email}:`, message);
+    const formattedMessage = formatMessageWithUser(message, userId);
+    console.log(
+      `Message being sent to Teams from ${user.email}:`,
+      formattedMessage
+    );
 
     // Add the message to the message store
-    messageStore[userId].push({ user: true, text: message });
+    messageStore[userId].push({ user: true, text: formattedMessage });
 
-    const response = await axios.post(TEAMS_WEBHOOK_URL, {
-      text: `Message from ${user.name} (${user.email}): ${message}`,
+    await axios.post(TEAMS_WEBHOOK_URL, {
+      text: formattedMessage,
     });
-
-    // Extract the conversationId from the response or set it dynamically based on the user
-    let conversationId = response.data.id || `19:${userId}@thread.tacv2`;
-
-    // Update conversationToUserMap
-    conversationToUserMap[conversationId] = userId;
-
-    console.log(`Mapped conversationId ${conversationId} to userId ${userId}`);
-    console.log('Updated conversationToUserMap:', conversationToUserMap);
 
     res.status(200).json({ success: true });
   } catch (error) {
@@ -125,35 +117,40 @@ app.post('/receive-from-teams', (req, res) => {
       JSON.stringify(req.body, null, 2)
     );
 
-    const conversationId = req.body.conversation.id.split(';')[0]; // Extract conversation ID
     const htmlContent =
       req.body.text ||
       (req.body.attachments && req.body.attachments[0]?.content);
     const textContent = htmlContent.replace(/<\/?[^>]+(>|$)/g, ''); // Strip HTML tags
 
     console.log('Extracted message content:', textContent);
-    console.log('Conversation ID:', conversationId);
 
-    // Use conversationId to map to userId
-    const chatbotUserId = conversationToUserMap[conversationId];
+    // Extract the custom user identifier from the message content
+    const userId = Object.keys(users).find((userId) =>
+      textContent.startsWith(`@${users[userId].name}:`)
+    );
 
-    if (!chatbotUserId) {
+    if (!userId) {
       throw new Error(
-        'Invalid payload: Unable to map conversation ID to chatbot user.'
+        'Invalid payload: Unable to map message to chatbot user.'
       );
     }
 
-    // Emit the message to the correct chatbot user based on conversationId
-    if (textContent && chatbotUserId) {
-      messageStore[chatbotUserId].push({ user: false, text: textContent });
-      io.to(chatbotUserId).emit('chat message', {
+    // Clean the message to remove the identifier
+    const cleanMessage = textContent
+      .replace(`@${users[userId].name}:`, '')
+      .trim();
+
+    // Emit the message to the correct chatbot user based on the identifier
+    if (cleanMessage && userId) {
+      messageStore[userId].push({ user: false, text: cleanMessage });
+      io.to(userId).emit('chat message', {
         user: false,
-        text: textContent,
+        text: cleanMessage,
       });
-      console.log(`Emitted message to room ${chatbotUserId}: ${textContent}`);
+      console.log(`Emitted message to room ${userId}: ${cleanMessage}`);
     } else {
       console.log(
-        'No matching user found for this conversation ID. Message not emitted.'
+        'No matching user found for this message. Message not emitted.'
       );
     }
 
