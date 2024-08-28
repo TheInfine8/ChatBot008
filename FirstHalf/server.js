@@ -111,6 +111,7 @@ app.post('/send-to-teams', async (req, res) => {
 });
 
 // Route to receive messages from Microsoft Teams
+// Route to receive messages from Microsoft Teams
 app.post('/receive-from-teams', (req, res) => {
   try {
     console.log(
@@ -140,6 +141,11 @@ app.post('/receive-from-teams', (req, res) => {
     const cleanMessage = textContent
       .replace(`@${users[userId].name}:`, '')
       .trim();
+
+    // Log the message for debugging purposes
+    console.log(
+      `Mapped message to user ${users[userId].name} with cleaned content: ${cleanMessage}`
+    );
 
     // Emit the cleaned message to the correct chatbot user based on the identifier
     if (cleanMessage && userId) {
