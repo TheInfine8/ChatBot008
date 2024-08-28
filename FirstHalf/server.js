@@ -112,61 +112,42 @@ app.post('/send-to-teams', async (req, res) => {
 
 // Route to receive messages from Microsoft Teams
 // Route to receive messages from Microsoft Teams
+// Route to receive messages from Microsoft Teams
 app.post('/receive-from-teams', (req, res) => {
   try {
-    console.log(
-      'Raw Payload received from Teams:',
-      JSON.stringify(req.body, null, 2)
-    );
+    console.log('Raw Payload received from Teams:', JSON.stringify(req.body, null, 2));
 
-    const htmlContent =
-      req.body.text ||
-      (req.body.attachments && req.body.attachments[0]?.content);
+    const htmlContent = req.body.text || (req.body.attachments && req.body.attachments[0]?.content);
     const textContent = htmlContent.replace(/<\/?[^>]+(>|$)/g, ''); // Strip HTML tags
 
     console.log('Extracted message content:', textContent);
 
-    // Extract the correct user identifier (e.g., @Titan, @Dcathelon, @DRL) from the message content
-    const userId = Object.keys(users).find((userId) =>
-      textContent.includes(`@${users[userId].name}:`)
-    );
+    // Look for the mention in the message and extract the user mention
+    const matchedUser = Object.keys(users).find(userId => textContent.includes(`@${users[userId].name}`));
 
-    if (!userId) {
-      throw new Error(
-        'Invalid payload: Unable to map message to chatbot user.'
-      );
+    if (!matchedUser) {
+      throw new Error('Invalid payload: Unable to map message to chatbot user.');
     }
 
-    // Clean the message by removing the @mention (e.g., @Titan:) from the message text
-    const cleanMessage = textContent
-      .replace(`@${users[userId].name}:`, '')
-      .trim();
+    // Clean the message by removing the @mention (e.g., @Dcathelon:) from the message text
+    const cleanMessage = textContent.replace(`@${users[matchedUser].name}:`, '').trim();
 
-    // Log the message for debugging purposes
-    console.log(
-      `Mapped message to user ${users[userId].name} with cleaned content: ${cleanMessage}`
-    );
-
-    // Emit the cleaned message to the correct chatbot user based on the identifier
-    if (cleanMessage && userId) {
-      messageStore[userId].push({ user: false, text: cleanMessage });
-      io.to(userId).emit('chat message', {
+    // Emit the cleaned message to the correct chatbot user
+    if (cleanMessage && matchedUser) {
+      messageStore[matchedUser].push({ user: false, text: cleanMessage });
+      io.to(matchedUser).emit('chat message', {
         user: false,
         text: cleanMessage,
       });
-      console.log(`Emitted message to room ${userId}: ${cleanMessage}`);
+      console.log(`Emitted message to room ${matchedUser}: ${cleanMessage}`);
     } else {
-      console.log(
-        'No matching user found for this message. Message not emitted.'
-      );
+      console.log('No matching user found for this message. Message not emitted.');
     }
 
     res.status(200).json({ text: 'Message received by the website' });
   } catch (error) {
     console.error('Error processing the request:', error.message);
-    res
-      .status(500)
-      .json({ error: 'Internal Server Error', details: error.message });
+    res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 });
 
